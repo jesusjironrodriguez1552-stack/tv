@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reproductor de Archivos TS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .player-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #555;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        video {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .url-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .url-input {
+            flex: 1;
+            min-width: 300px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            min-width: 120px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .info-box {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .quick-links {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .quick-link {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quick-link:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .url-input-container {
+                flex-direction: column;
+            }
+            
+            .url-input {
+                min-width: 100%;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🎬 Reproductor TS</h1>
+        
+        <div class="info-box">
+            <h3>🔧 Compatibilidad de Formatos</h3>
+            <p><strong>Archivos .ts:</strong> Soportados nativamente en navegadores modernos</p>
+            <p><strong>Streaming HTTP:</strong> Compatible con URLs directas</p>
+            <p><strong>CORS:</strong> Puede requerir configuración del servidor para algunos contenidos</p>
+        </div>
+
+        <div class="player-section">
+            <h2 class="section-title">Reproductor Principal</h2>
+            
+            <div class="url-input-container">
+                <input 
+                    type="url" 
+                    class="url-input" 
+                    id="videoUrl" 
+                    placeholder="Ingresa la URL del archivo .ts aquí..."
+                    value="http://74.91.28.186:8080/live/Pollo99@/Pollo99@/1176411.ts"
+                >
+                <button class="btn" onclick="loadVideo()">▶️ Cargar Video</button>
+            </div>
+
+            <div class="quick-links">
+                <div class="quick-link" onclick="loadQuickUrl('http://74.91.28.186:8080/live/Pollo99@/Pollo99@/1176411.ts')">
+                    📺 URL de ejemplo
+                </div>
+                <div class="quick-link" onclick="clearVideo()">
+                    🗑️ Limpiar
+                </div>
+            </div>
+
+            <div class="status" id="status"></div>
+
+            <video 
+                id="videoPlayer" 
+                controls 
+                preload="metadata"
+                style="display: none;"
+            >
+                Tu navegador no soporta el elemento video HTML5.
+            </video>
+        </div>
+
+        <div class="info-box">
+            <h3>📖 Instrucciones de Uso</h3>
+            <p>1. Ingresa la URL completa del archivo .ts en el campo de texto</p>
+            <p>2. Haz clic en "Cargar Video" para reproducir el contenido</p>
+            <p>3. Usa los controles del reproductor para pausar, ajustar volumen, etc.</p>
+            <p>4. Si el video no carga, verifica que la URL sea correcta y accesible</p>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            setTimeout(() => {
+                status.style.display = 'none';
+            }, 4000);
+        }
+
+        function loadVideo() {
+            const urlInput = document.getElementById('videoUrl');
+            const videoPlayer = document.getElementById('videoPlayer');
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showStatus('Por favor ingresa una URL válida', 'error');
+                return;
+            }
+
+            // Validar que la URL tenga formato correcto
+            try {
+                new URL(url);
+            } catch (e) {
+                showStatus('URL no válida. Verifica el formato.', 'error');
+                return;
+            }
+
+            showStatus('Cargando video...', 'success');
+            
+            videoPlayer.src = url;
+            videoPlayer.style.display = 'block';
+            
+            videoPlayer.onloadstart = () => {
+                showStatus('Iniciando carga del video...', 'success');
+            };
+            
+            videoPlayer.onloadedmetadata = () => {
+                showStatus('Video cargado correctamente. ¡Listo para reproducir!', 'success');
+            };
+            
+            videoPlayer.onerror = (e) => {
+                let errorMsg = 'Error al cargar el video. ';
+                switch(videoPlayer.error?.code) {
+                    case 1:
+                        errorMsg += 'Carga abortada por el usuario.';
+                        break;
+                    case 2:
+                        errorMsg += 'Error de red.';
+                        break;
+                    case 3:
+                        errorMsg += 'Error de decodificación.';
+                        break;
+                    case 4:
+                        errorMsg += 'Formato no soportado.';
+                        break;
+                    default:
+                        errorMsg += 'Error desconocido.';
+                }
+                showStatus(errorMsg, 'error');
+            };
+
+            videoPlayer.oncanplay = () => {
+                showStatus('Video listo para reproducir', 'success');
+            };
+        }
+
+        function loadQuickUrl(url) {
+            document.getElementById('videoUrl').value = url;
+            loadVideo();
+        }
+
+        function clearVideo() {
+            const videoPlayer = document.getElementById('videoPlayer');
+            const urlInput = document.getElementById('videoUrl');
+            
+            videoPlayer.src = '';
+            videoPlayer.style.display = 'none';
+            urlInput.value = '';
+            
+            showStatus('Reproductor limpiado', 'success');
+        }
+
+        // Cargar automáticamente la URL de ejemplo al cargar la página
+        window.onload = () => {
+            const urlInput = document.getElementById('videoUrl');
+            if (urlInput.value) {
+                setTimeout(() => {
+                    loadVideo();
+                }, 500);
+            }
+        };
+
+        // Permitir cargar video con Enter
+        document.getElementById('videoUrl').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadVideo();
+            }
+        });
+    </script>
+</body>
+</html>
