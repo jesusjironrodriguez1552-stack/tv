@@ -187,6 +187,13 @@
         <h1 class="title">🎬 Reproductor TS</h1>
         
         <div class="info-box">
+            <h3>⚠️ Problemas Detectados</h3>
+            <p><strong>Error 404:</strong> El servidor no encuentra el archivo en esa URL</p>
+            <p><strong>Mixed Content:</strong> HTTPS no puede cargar contenido HTTP por seguridad</p>
+            <p><strong>Solución:</strong> Necesitas una URL HTTPS o usar el reproductor en HTTP</p>
+        </div>
+
+        <div class="info-box">
             <h3>🔧 Compatibilidad de Formatos</h3>
             <p><strong>Archivos .ts:</strong> Soportados nativamente en navegadores modernos</p>
             <p><strong>Streaming HTTP:</strong> Compatible con URLs directas</p>
@@ -201,15 +208,18 @@
                     type="url" 
                     class="url-input" 
                     id="videoUrl" 
-                    placeholder="Ingresa la URL del archivo .ts aquí..."
-                    value="http://74.91.28.186:8080/live/Pollo99@/Pollo99@/1176411.ts"
+                    placeholder="Ingresa una URL HTTPS del archivo .ts aquí..."
+                    value=""
                 >
                 <button class="btn" onclick="loadVideo()">▶️ Cargar Video</button>
             </div>
 
             <div class="quick-links">
-                <div class="quick-link" onclick="loadQuickUrl('http://74.91.28.186:8080/live/Pollo99@/Pollo99@/1176411.ts')">
-                    📺 URL de ejemplo
+                <div class="quick-link" onclick="loadQuickUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')">
+                    📺 URL de prueba (HTTPS)
+                </div>
+                <div class="quick-link" onclick="testHttpUrl()">
+                    🔧 Probar URL HTTP (puede fallar)
                 </div>
                 <div class="quick-link" onclick="clearVideo()">
                     🗑️ Limpiar
@@ -230,10 +240,18 @@
 
         <div class="info-box">
             <h3>📖 Instrucciones de Uso</h3>
-            <p>1. Ingresa la URL completa del archivo .ts en el campo de texto</p>
-            <p>2. Haz clic en "Cargar Video" para reproducir el contenido</p>
-            <p>3. Usa los controles del reproductor para pausar, ajustar volumen, etc.</p>
-            <p>4. Si el video no carga, verifica que la URL sea correcta y accesible</p>
+            <p>1. <strong>Para URLs HTTP:</strong> Guarda este archivo y ábrelo desde <code>http://localhost</code> o un servidor HTTP</p>
+            <p>2. <strong>Para URLs HTTPS:</strong> Úsalo directamente desde cualquier sitio HTTPS</p>
+            <p>3. Verifica que la URL del video sea correcta y accesible</p>
+            <p>4. Si obtienes error 404, el archivo no existe en esa ubicación</p>
+        </div>
+
+        <div class="info-box">
+            <h3>🛠️ Soluciones para tu URL</h3>
+            <p><strong>Opción 1:</strong> Cambia <code>http://</code> por <code>https://</code> si el servidor lo soporta</p>
+            <p><strong>Opción 2:</strong> Usa este reproductor desde un sitio HTTP (no HTTPS)</p>
+            <p><strong>Opción 3:</strong> Configura un proxy HTTPS para la URL</p>
+            <p><strong>Opción 4:</strong> Verifica que la ruta del archivo sea correcta (error 404)</p>
         </div>
     </div>
 
@@ -261,7 +279,13 @@
 
             // Validar que la URL tenga formato correcto
             try {
-                new URL(url);
+                const urlObj = new URL(url);
+                
+                // Advertir sobre mixed content
+                if (window.location.protocol === 'https:' && urlObj.protocol === 'http:') {
+                    showStatus('⚠️ Advertencia: URL HTTP en sitio HTTPS puede ser bloqueada por el navegador', 'error');
+                }
+                
             } catch (e) {
                 showStatus('URL no válida. Verifica el formato.', 'error');
                 return;
@@ -287,7 +311,7 @@
                         errorMsg += 'Carga abortada por el usuario.';
                         break;
                     case 2:
-                        errorMsg += 'Error de red.';
+                        errorMsg += 'Error de red (posible problema CORS o 404).';
                         break;
                     case 3:
                         errorMsg += 'Error de decodificación.';
@@ -298,6 +322,11 @@
                     default:
                         errorMsg += 'Error desconocido.';
                 }
+                
+                if (url.startsWith('http:') && window.location.protocol === 'https:') {
+                    errorMsg += ' Mixed Content: usa HTTPS o abre desde HTTP.';
+                }
+                
                 showStatus(errorMsg, 'error');
             };
 
@@ -308,6 +337,13 @@
 
         function loadQuickUrl(url) {
             document.getElementById('videoUrl').value = url;
+            loadVideo();
+        }
+
+        function testHttpUrl() {
+            const originalUrl = 'http://74.91.28.186:8080/live/Pollo99@/Pollo99@/1176411.ts';
+            document.getElementById('videoUrl').value = originalUrl;
+            showStatus('⚠️ Probando URL HTTP - puede fallar en sitios HTTPS', 'error');
             loadVideo();
         }
 
@@ -322,14 +358,9 @@
             showStatus('Reproductor limpiado', 'success');
         }
 
-        // Cargar automáticamente la URL de ejemplo al cargar la página
+        // No cargar automáticamente debido a problemas de mixed content
         window.onload = () => {
-            const urlInput = document.getElementById('videoUrl');
-            if (urlInput.value) {
-                setTimeout(() => {
-                    loadVideo();
-                }, 500);
-            }
+            showStatus('Reproductor listo. Ingresa una URL HTTPS para mejores resultados.', 'success');
         };
 
         // Permitir cargar video con Enter
