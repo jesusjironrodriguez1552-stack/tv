@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reproductor HLS</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+    <title>⚽ FútbolStream - Transmisión en Vivo</title>
     <style>
         * {
             margin: 0;
@@ -13,344 +12,400 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .player-container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            max-width: 800px;
-            width: 100%;
-        }
-
-        .title {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
             color: white;
-            text-align: center;
-            margin-bottom: 25px;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        .video-wrapper {
+        .background-pattern {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 2px, transparent 2px),
+                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+        }
+
+        .header {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .video-section {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .video-container {
             position: relative;
+            width: 100%;
+            height: 500px;
+            background: #000;
             border-radius: 15px;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-            background: #000;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
         }
 
-        #video {
+        #videoPlayer {
             width: 100%;
-            height: 360px;
-            max-width: 640px;
-            display: block;
-            margin: 0 auto;
-        }
-
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            padding: 12px 24px;
+            height: 100%;
             border: none;
-            border-radius: 25px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .url-input {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 25px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 14px;
-            margin-bottom: 15px;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .url-input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .url-input:focus {
-            outline: none;
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .status {
-            text-align: center;
-            margin-top: 15px;
-            padding: 10px;
             border-radius: 15px;
-            font-weight: bold;
+        }
+
+        .play-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(30,60,114,0.9), rgba(42,82,152,0.9));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-radius: 15px;
+        }
+
+        .play-overlay:hover {
+            background: linear-gradient(135deg, rgba(30,60,114,0.7), rgba(42,82,152,0.7));
+        }
+
+        .play-button {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,255,136,0.3);
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        .play-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 40px rgba(0,255,136,0.5);
+        }
+
+        .play-icon {
+            width: 0;
+            height: 0;
+            border-left: 30px solid #1e3c72;
+            border-top: 18px solid transparent;
+            border-bottom: 18px solid transparent;
+            margin-left: 8px;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 10px 30px rgba(0,255,136,0.3); }
+            50% { box-shadow: 0 15px 40px rgba(0,255,136,0.6); }
+            100% { box-shadow: 0 10px 30px rgba(0,255,136,0.3); }
+        }
+
+        .match-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .info-card {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
             transition: all 0.3s ease;
         }
 
-        .status.loading {
-            background: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
-            border: 1px solid rgba(255, 193, 7, 0.3);
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
 
-        .status.playing {
-            background: rgba(40, 167, 69, 0.2);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.3);
+        .info-card h3 {
+            color: #00ff88;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
         }
 
-        .status.error {
-            background: rgba(220, 53, 69, 0.2);
-            color: #dc3545;
-            border: 1px solid rgba(220, 53, 69, 0.3);
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0.5rem 0;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            background: #ff4444;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 1rem 0;
+            animation: blink 2s infinite;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(0,0,0,0.3);
+            margin-top: 3rem;
         }
 
         @media (max-width: 768px) {
-            .player-container {
-                padding: 20px;
+            .container {
+                padding: 0 0.5rem;
             }
             
-            #video {
-                height: 280px;
+            .video-container {
+                height: 300px;
             }
             
-            .title {
-                font-size: 20px;
+            .logo {
+                font-size: 2rem;
             }
             
-            .btn {
-                padding: 10px 20px;
-                font-size: 12px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #video {
-                height: 240px;
+            .play-button {
+                width: 80px;
+                height: 80px;
             }
             
-            .controls {
-                gap: 10px;
-            }
-            
-            .btn {
-                padding: 8px 16px;
+            .play-icon {
+                border-left-width: 24px;
+                border-top-width: 14px;
+                border-bottom-width: 14px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="player-container">
-        <h1 class="title">🎥 Reproductor HLS</h1>
-        
-        <input 
-            type="text" 
-            id="urlInput" 
-            class="url-input" 
-            placeholder="Introduce la URL del stream HLS (.m3u8)"
-            value="http://74.91.28.186:8080/live/Pollo99@/Pollo99@/playlist.m3u8"
-        >
-        
-        <div class="video-wrapper">
-            <video 
-                id="video" 
-                controls
-                muted
-                playsinline
-                poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360'%3E%3Crect width='640' height='360' fill='%23000'/%3E%3Ctext x='320' y='180' text-anchor='middle' dy='0.35em' fill='white' font-family='Arial' font-size='24'%3EReproductor HLS%3C/text%3E%3C/svg%3E"
-            >
-                Tu navegador no soporta el elemento video.
-            </video>
+    <div class="background-pattern"></div>
+    
+    <header class="header">
+        <div class="logo">⚽ FútbolStream</div>
+        <div class="subtitle">Transmisión en Vivo - Alta Calidad</div>
+    </header>
+
+    <div class="container">
+        <div class="video-section">
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                EN VIVO
+            </div>
+            
+            <div class="video-container">
+                <div class="play-overlay" id="playOverlay">
+                    <div class="play-button">
+                        <div class="play-icon"></div>
+                    </div>
+                </div>
+                <iframe 
+                    id="videoPlayer" 
+                    src="" 
+                    allowfullscreen
+                    style="display: none;">
+                </iframe>
+            </div>
         </div>
-        
-        <div class="controls">
-            <button class="btn" onclick="loadStream()">🚀 Cargar Stream</button>
-            <button class="btn" onclick="playPause()">⏯️ Play/Pausa</button>
-            <button class="btn" onclick="toggleFullscreen()">🔍 Pantalla Completa</button>
-            <button class="btn" onclick="toggleMute()">🔊 Mute</button>
+
+        <div class="match-info">
+            <div class="info-card">
+                <h3>📊 Estadísticas del Partido</h3>
+                <div class="stats">
+                    <span>Posesión</span>
+                    <span>55% - 45%</span>
+                </div>
+                <div class="stats">
+                    <span>Tiros a puerta</span>
+                    <span>7 - 4</span>
+                </div>
+                <div class="stats">
+                    <span>Corners</span>
+                    <span>6 - 3</span>
+                </div>
+                <div class="stats">
+                    <span>Faltas</span>
+                    <span>12 - 8</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3>🏆 Información del Partido</h3>
+                <div class="stats">
+                    <span>Competición</span>
+                    <span>Liga Premium</span>
+                </div>
+                <div class="stats">
+                    <span>Estadio</span>
+                    <span>Estadio Central</span>
+                </div>
+                <div class="stats">
+                    <span>Árbitro</span>
+                    <span>Juan Pérez</span>
+                </div>
+                <div class="stats">
+                    <span>Tiempo</span>
+                    <span id="matchTime">78' 2T</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3>📺 Calidad de Transmisión</h3>
+                <div class="stats">
+                    <span>Resolución</span>
+                    <span>HD 1080p</span>
+                </div>
+                <div class="stats">
+                    <span>FPS</span>
+                    <span>60 fps</span>
+                </div>
+                <div class="stats">
+                    <span>Bitrate</span>
+                    <span>4.5 Mbps</span>
+                </div>
+                <div class="stats">
+                    <span>Latencia</span>
+                    <span>< 2 segundos</span>
+                </div>
+            </div>
         </div>
-        
-        <div id="status" class="status">Listo para cargar stream</div>
     </div>
 
+    <footer class="footer">
+        <p>© 2024 FútbolStream - La mejor experiencia de fútbol en vivo</p>
+        <p style="margin-top: 0.5rem; opacity: 0.7;">Disfruta del mejor fútbol con transmisión en alta definición</p>
+    </footer>
+
     <script>
-        const video = document.getElementById('video');
-        const urlInput = document.getElementById('urlInput');
-        const status = document.getElementById('status');
-        let hls = null;
+        const playOverlay = document.getElementById('playOverlay');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const streamUrl = 'https://player.livepush.io/live/emX9U1VvdWRlp89';
 
-        function updateStatus(message, type = '') {
-            status.textContent = message;
-            status.className = `status ${type}`;
+        // Función para iniciar el stream
+        function startStream() {
+            playOverlay.style.display = 'none';
+            videoPlayer.style.display = 'block';
+            videoPlayer.src = streamUrl;
         }
 
-        function loadStream() {
-            const url = urlInput.value.trim();
+        // Event listener para el botón play
+        playOverlay.addEventListener('click', startStream);
+
+        // Animación del tiempo del partido
+        let minutes = 78;
+        let seconds = 0;
+        const matchTimeElement = document.getElementById('matchTime');
+
+        function updateMatchTime() {
+            seconds++;
+            if (seconds === 60) {
+                seconds = 0;
+                minutes++;
+            }
+            matchTimeElement.textContent = `${minutes}' 2T`;
+        }
+
+        // Actualizar cada segundo (simulación)
+        setInterval(updateMatchTime, 1000);
+
+        // Efectos de partículas en el fondo
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.style.position = 'fixed';
+            particle.style.width = Math.random() * 6 + 2 + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.background = 'rgba(0, 255, 136, 0.3)';
+            particle.style.borderRadius = '50%';
+            particle.style.left = Math.random() * window.innerWidth + 'px';
+            particle.style.top = '-10px';
+            particle.style.pointerEvents = 'none';
+            particle.style.zIndex = '-1';
             
-            if (!url) {
-                updateStatus('⚠️ Por favor introduce una URL válida', 'error');
-                return;
-            }
-
-            updateStatus('🔄 Cargando stream...', 'loading');
-
-            // Destruir instancia anterior si existe
-            if (hls) {
-                hls.destroy();
-                hls = null;
-            }
-
-            // Verificar soporte nativo HLS (Safari)
-            if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                updateStatus('✅ Stream cargado (soporte nativo)', 'playing');
-                return;
-            }
-
-            // Verificar soporte de hls.js
-            if (!Hls.isSupported()) {
-                updateStatus('❌ Tu navegador no soporta HLS', 'error');
-                return;
-            }
-
-            // Crear nueva instancia de hls.js
-            hls = new Hls({
-                debug: false,
-                enableWorker: true,
-                lowLatencyMode: true,
-                backBufferLength: 90
+            document.body.appendChild(particle);
+            
+            const animation = particle.animate([
+                { transform: 'translateY(-10px)', opacity: 1 },
+                { transform: 'translateY(' + (window.innerHeight + 10) + 'px)', opacity: 0 }
+            ], {
+                duration: Math.random() * 3000 + 2000,
+                easing: 'linear'
             });
-
-            // Eventos de hls.js
-            hls.on(Hls.Events.MEDIA_ATTACHED, function() {
-                console.log('Video y hls.js conectados');
+            
+            animation.addEventListener('finish', () => {
+                particle.remove();
             });
-
-            hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
-                console.log('Manifest cargado, encontrados ' + data.levels.length + ' niveles de calidad');
-                updateStatus('✅ Stream listo para reproducir', 'playing');
-            });
-
-            hls.on(Hls.Events.ERROR, function(event, data) {
-                console.error('Error HLS:', data);
-                if (data.fatal) {
-                    switch(data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            updateStatus('❌ Error de red - Verificar conexión', 'error');
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            updateStatus('❌ Error de media - Intentando recuperar...', 'error');
-                            hls.recoverMediaError();
-                            break;
-                        default:
-                            updateStatus('❌ Error fatal - Stream no disponible', 'error');
-                            break;
-                    }
-                } else {
-                    updateStatus('⚠️ Error no fatal: ' + data.type, 'error');
-                }
-            });
-
-            hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {
-                console.log('Cambiado a nivel ' + data.level);
-            });
-
-            // Cargar stream
-            hls.loadSource(url);
-            hls.attachMedia(video);
         }
 
-        function playPause() {
-            if (video.paused) {
-                video.play().catch(e => {
-                    updateStatus('❌ Error al reproducir: ' + e.message, 'error');
-                });
-            } else {
-                video.pause();
-            }
+        // Crear partículas cada cierto tiempo
+        setInterval(createParticle, 3000);
+
+        // Precargar algunas partículas
+        for (let i = 0; i < 5; i++) {
+            setTimeout(createParticle, i * 600);
         }
-
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                video.requestFullscreen().catch(e => {
-                    console.log('Error al entrar en pantalla completa:', e);
-                });
-            } else {
-                document.exitFullscreen();
-            }
-        }
-
-        function toggleMute() {
-            video.muted = !video.muted;
-            updateStatus(video.muted ? '🔇 Silenciado' : '🔊 Con sonido', 'playing');
-        }
-
-        // Eventos del video
-        video.addEventListener('play', () => {
-            updateStatus('▶️ Reproduciendo...', 'playing');
-        });
-
-        video.addEventListener('pause', () => {
-            updateStatus('⏸️ Pausado', 'loading');
-        });
-
-        video.addEventListener('waiting', () => {
-            updateStatus('⏳ Buffering...', 'loading');
-        });
-
-        video.addEventListener('canplay', () => {
-            updateStatus('✅ Listo para reproducir', 'playing');
-        });
-
-        // Cargar automáticamente al iniciar
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                loadStream();
-            }, 1000);
-        });
-
-        // Detectar cambios en el input de URL
-        urlInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                loadStream();
-            }
-        });
     </script>
 </body>
 </html>
