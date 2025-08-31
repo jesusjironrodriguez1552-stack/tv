@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reproductor de Archivos TS</title>
+    <title>Reproductor HLS</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,361 +13,342 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             padding: 20px;
         }
 
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            max-width: 900px;
-            width: 100%;
+        .player-container {
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 800px;
+            width: 100%;
         }
 
         .title {
+            color: white;
             text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2.5rem;
-            font-weight: 700;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
-        .player-section {
-            margin-bottom: 30px;
-        }
-
-        .section-title {
-            font-size: 1.3rem;
-            color: #555;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #667eea;
-        }
-
-        video {
-            width: 100%;
-            max-width: 800px;
-            height: auto;
+        .video-wrapper {
+            position: relative;
             border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            background: #000;
         }
 
-        .url-input-container {
+        #video {
+            width: 100%;
+            height: 360px;
+            max-width: 640px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .controls {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
             flex-wrap: wrap;
-        }
-
-        .url-input {
-            flex: 1;
-            min-width: 300px;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        .url-input:focus {
-            outline: none;
-            border-color: #667eea;
         }
 
         .btn {
             padding: 12px 24px;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
             cursor: pointer;
-            transition: transform 0.3s, box-shadow 0.3s;
-            min-width: 120px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
         }
 
         .btn:active {
             transform: translateY(0);
         }
 
-        .info-box {
-            background: #f8f9ff;
-            border-left: 4px solid #667eea;
+        .url-input {
+            width: 100%;
             padding: 15px;
-            border-radius: 0 10px 10px 0;
-            margin-bottom: 20px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .info-box h3 {
-            color: #333;
-            margin-bottom: 10px;
+        .url-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
         }
 
-        .info-box p {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 8px;
+        .url-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
         }
 
         .status {
+            text-align: center;
+            margin-top: 15px;
             padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: none;
+            border-radius: 15px;
+            font-weight: bold;
+            transition: all 0.3s ease;
         }
 
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        .status.loading {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .status.playing {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
         }
 
         .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .quick-links {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
-        }
-
-        .quick-link {
-            padding: 8px 16px;
-            background: #f0f0f0;
-            color: #555;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .quick-link:hover {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
         }
 
         @media (max-width: 768px) {
-            .url-input-container {
-                flex-direction: column;
+            .player-container {
+                padding: 20px;
             }
             
-            .url-input {
-                min-width: 100%;
+            #video {
+                height: 280px;
             }
             
             .title {
-                font-size: 2rem;
+                font-size: 20px;
+            }
+            
+            .btn {
+                padding: 10px 20px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #video {
+                height: 240px;
+            }
+            
+            .controls {
+                gap: 10px;
+            }
+            
+            .btn {
+                padding: 8px 16px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1 class="title">🎬 Reproductor TS</h1>
+    <div class="player-container">
+        <h1 class="title">🎥 Reproductor HLS</h1>
         
-        <div class="info-box">
-            <h3>⚠️ Problemas Detectados</h3>
-            <p><strong>Error 404:</strong> El servidor no encuentra el archivo en esa URL</p>
-            <p><strong>Mixed Content:</strong> HTTPS no puede cargar contenido HTTP por seguridad</p>
-            <p><strong>Solución:</strong> Necesitas una URL HTTPS o usar el reproductor en HTTP</p>
-        </div>
-
-        <div class="info-box">
-            <h3>🔧 Compatibilidad de Formatos</h3>
-            <p><strong>Archivos .ts:</strong> Soportados nativamente en navegadores modernos</p>
-            <p><strong>Streaming HTTP:</strong> Compatible con URLs directas</p>
-            <p><strong>CORS:</strong> Puede requerir configuración del servidor para algunos contenidos</p>
-        </div>
-
-        <div class="player-section">
-            <h2 class="section-title">Reproductor Principal</h2>
-            
-            <div class="url-input-container">
-                <input 
-                    type="url" 
-                    class="url-input" 
-                    id="videoUrl" 
-                    placeholder="Ingresa una URL HTTPS del archivo .ts aquí..."
-                    value=""
-                >
-                <button class="btn" onclick="loadVideo()">▶️ Cargar Video</button>
-            </div>
-
-            <div class="quick-links">
-                <div class="quick-link" onclick="loadQuickUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4')">
-                    📺 URL de prueba (HTTPS)
-                </div>
-                <div class="quick-link" onclick="testHttpUrl()">
-                    🔧 Probar URL HTTP (puede fallar)
-                </div>
-                <div class="quick-link" onclick="clearVideo()">
-                    🗑️ Limpiar
-                </div>
-            </div>
-
-            <div class="status" id="status"></div>
-
+        <input 
+            type="text" 
+            id="urlInput" 
+            class="url-input" 
+            placeholder="Introduce la URL del stream HLS (.m3u8)"
+            value="http://74.91.28.186:8080/live/Pollo99@/Pollo99@/playlist.m3u8"
+        >
+        
+        <div class="video-wrapper">
             <video 
-                id="videoPlayer" 
-                controls 
-                preload="metadata"
-                style="display: none;"
+                id="video" 
+                controls
+                muted
+                playsinline
+                poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 360'%3E%3Crect width='640' height='360' fill='%23000'/%3E%3Ctext x='320' y='180' text-anchor='middle' dy='0.35em' fill='white' font-family='Arial' font-size='24'%3EReproductor HLS%3C/text%3E%3C/svg%3E"
             >
-                Tu navegador no soporta el elemento video HTML5.
+                Tu navegador no soporta el elemento video.
             </video>
         </div>
-
-        <div class="info-box">
-            <h3>📖 Instrucciones de Uso</h3>
-            <p>1. <strong>Para URLs HTTP:</strong> Guarda este archivo y ábrelo desde <code>http://localhost</code> o un servidor HTTP</p>
-            <p>2. <strong>Para URLs HTTPS:</strong> Úsalo directamente desde cualquier sitio HTTPS</p>
-            <p>3. Verifica que la URL del video sea correcta y accesible</p>
-            <p>4. Si obtienes error 404, el archivo no existe en esa ubicación</p>
+        
+        <div class="controls">
+            <button class="btn" onclick="loadStream()">🚀 Cargar Stream</button>
+            <button class="btn" onclick="playPause()">⏯️ Play/Pausa</button>
+            <button class="btn" onclick="toggleFullscreen()">🔍 Pantalla Completa</button>
+            <button class="btn" onclick="toggleMute()">🔊 Mute</button>
         </div>
-
-        <div class="info-box">
-            <h3>🛠️ Soluciones para tu URL</h3>
-            <p><strong>Opción 1:</strong> Cambia <code>http://</code> por <code>https://</code> si el servidor lo soporta</p>
-            <p><strong>Opción 2:</strong> Usa este reproductor desde un sitio HTTP (no HTTPS)</p>
-            <p><strong>Opción 3:</strong> Configura un proxy HTTPS para la URL</p>
-            <p><strong>Opción 4:</strong> Verifica que la ruta del archivo sea correcta (error 404)</p>
-        </div>
+        
+        <div id="status" class="status">Listo para cargar stream</div>
     </div>
 
     <script>
-        function showStatus(message, type = 'success') {
-            const status = document.getElementById('status');
+        const video = document.getElementById('video');
+        const urlInput = document.getElementById('urlInput');
+        const status = document.getElementById('status');
+        let hls = null;
+
+        function updateStatus(message, type = '') {
             status.textContent = message;
             status.className = `status ${type}`;
-            status.style.display = 'block';
-            
-            setTimeout(() => {
-                status.style.display = 'none';
-            }, 4000);
         }
 
-        function loadVideo() {
-            const urlInput = document.getElementById('videoUrl');
-            const videoPlayer = document.getElementById('videoPlayer');
+        function loadStream() {
             const url = urlInput.value.trim();
-
+            
             if (!url) {
-                showStatus('Por favor ingresa una URL válida', 'error');
+                updateStatus('⚠️ Por favor introduce una URL válida', 'error');
                 return;
             }
 
-            // Validar que la URL tenga formato correcto
-            try {
-                const urlObj = new URL(url);
-                
-                // Advertir sobre mixed content
-                if (window.location.protocol === 'https:' && urlObj.protocol === 'http:') {
-                    showStatus('⚠️ Advertencia: URL HTTP en sitio HTTPS puede ser bloqueada por el navegador', 'error');
-                }
-                
-            } catch (e) {
-                showStatus('URL no válida. Verifica el formato.', 'error');
+            updateStatus('🔄 Cargando stream...', 'loading');
+
+            // Destruir instancia anterior si existe
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+
+            // Verificar soporte nativo HLS (Safari)
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                updateStatus('✅ Stream cargado (soporte nativo)', 'playing');
                 return;
             }
 
-            showStatus('Cargando video...', 'success');
-            
-            videoPlayer.src = url;
-            videoPlayer.style.display = 'block';
-            
-            videoPlayer.onloadstart = () => {
-                showStatus('Iniciando carga del video...', 'success');
-            };
-            
-            videoPlayer.onloadedmetadata = () => {
-                showStatus('Video cargado correctamente. ¡Listo para reproducir!', 'success');
-            };
-            
-            videoPlayer.onerror = (e) => {
-                let errorMsg = 'Error al cargar el video. ';
-                switch(videoPlayer.error?.code) {
-                    case 1:
-                        errorMsg += 'Carga abortada por el usuario.';
-                        break;
-                    case 2:
-                        errorMsg += 'Error de red (posible problema CORS o 404).';
-                        break;
-                    case 3:
-                        errorMsg += 'Error de decodificación.';
-                        break;
-                    case 4:
-                        errorMsg += 'Formato no soportado.';
-                        break;
-                    default:
-                        errorMsg += 'Error desconocido.';
+            // Verificar soporte de hls.js
+            if (!Hls.isSupported()) {
+                updateStatus('❌ Tu navegador no soporta HLS', 'error');
+                return;
+            }
+
+            // Crear nueva instancia de hls.js
+            hls = new Hls({
+                debug: false,
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 90
+            });
+
+            // Eventos de hls.js
+            hls.on(Hls.Events.MEDIA_ATTACHED, function() {
+                console.log('Video y hls.js conectados');
+            });
+
+            hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                console.log('Manifest cargado, encontrados ' + data.levels.length + ' niveles de calidad');
+                updateStatus('✅ Stream listo para reproducir', 'playing');
+            });
+
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error('Error HLS:', data);
+                if (data.fatal) {
+                    switch(data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            updateStatus('❌ Error de red - Verificar conexión', 'error');
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            updateStatus('❌ Error de media - Intentando recuperar...', 'error');
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            updateStatus('❌ Error fatal - Stream no disponible', 'error');
+                            break;
+                    }
+                } else {
+                    updateStatus('⚠️ Error no fatal: ' + data.type, 'error');
                 }
-                
-                if (url.startsWith('http:') && window.location.protocol === 'https:') {
-                    errorMsg += ' Mixed Content: usa HTTPS o abre desde HTTP.';
-                }
-                
-                showStatus(errorMsg, 'error');
-            };
+            });
 
-            videoPlayer.oncanplay = () => {
-                showStatus('Video listo para reproducir', 'success');
-            };
+            hls.on(Hls.Events.LEVEL_SWITCHED, function(event, data) {
+                console.log('Cambiado a nivel ' + data.level);
+            });
+
+            // Cargar stream
+            hls.loadSource(url);
+            hls.attachMedia(video);
         }
 
-        function loadQuickUrl(url) {
-            document.getElementById('videoUrl').value = url;
-            loadVideo();
+        function playPause() {
+            if (video.paused) {
+                video.play().catch(e => {
+                    updateStatus('❌ Error al reproducir: ' + e.message, 'error');
+                });
+            } else {
+                video.pause();
+            }
         }
 
-        function testHttpUrl() {
-            const originalUrl = 'http://74.91.28.186:8080/live/Pollo99@/Pollo99@/1176411.ts';
-            document.getElementById('videoUrl').value = originalUrl;
-            showStatus('⚠️ Probando URL HTTP - puede fallar en sitios HTTPS', 'error');
-            loadVideo();
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                video.requestFullscreen().catch(e => {
+                    console.log('Error al entrar en pantalla completa:', e);
+                });
+            } else {
+                document.exitFullscreen();
+            }
         }
 
-        function clearVideo() {
-            const videoPlayer = document.getElementById('videoPlayer');
-            const urlInput = document.getElementById('videoUrl');
-            
-            videoPlayer.src = '';
-            videoPlayer.style.display = 'none';
-            urlInput.value = '';
-            
-            showStatus('Reproductor limpiado', 'success');
+        function toggleMute() {
+            video.muted = !video.muted;
+            updateStatus(video.muted ? '🔇 Silenciado' : '🔊 Con sonido', 'playing');
         }
 
-        // No cargar automáticamente debido a problemas de mixed content
-        window.onload = () => {
-            showStatus('Reproductor listo. Ingresa una URL HTTPS para mejores resultados.', 'success');
-        };
+        // Eventos del video
+        video.addEventListener('play', () => {
+            updateStatus('▶️ Reproduciendo...', 'playing');
+        });
 
-        // Permitir cargar video con Enter
-        document.getElementById('videoUrl').addEventListener('keypress', (e) => {
+        video.addEventListener('pause', () => {
+            updateStatus('⏸️ Pausado', 'loading');
+        });
+
+        video.addEventListener('waiting', () => {
+            updateStatus('⏳ Buffering...', 'loading');
+        });
+
+        video.addEventListener('canplay', () => {
+            updateStatus('✅ Listo para reproducir', 'playing');
+        });
+
+        // Cargar automáticamente al iniciar
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                loadStream();
+            }, 1000);
+        });
+
+        // Detectar cambios en el input de URL
+        urlInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                loadVideo();
+                loadStream();
             }
         });
     </script>
