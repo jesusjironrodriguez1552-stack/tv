@@ -80,8 +80,23 @@ function initGame() {
     }
     
     elements.startBtn.addEventListener('click', startGame);
-    elements.bidBtn?.addEventListener('click', makeBid);
-    elements.passBtn?.addEventListener('click', passTurn);
+    
+    // Verificar botones de subasta
+    if (elements.bidBtn) {
+        console.log('Botón de puja encontrado');
+        elements.bidBtn.addEventListener('click', makeBid);
+        elements.bidBtn.disabled = true; // Inicialmente deshabilitado
+    } else {
+        console.error('Botón de puja NO encontrado');
+    }
+    
+    if (elements.passBtn) {
+        console.log('Botón de pasar encontrado');  
+        elements.passBtn.addEventListener('click', passTurn);
+        elements.passBtn.disabled = true; // Inicialmente deshabilitado
+    } else {
+        console.error('Botón de pasar NO encontrado');
+    }
     
     updateBudgetDisplay();
     console.log('Juego inicializado correctamente');
@@ -181,23 +196,32 @@ function startPlayerAuction(playerIndex) {
 
 // Procesar turno de subasta
 function processTurn() {
-    if (!gameState.auction.active) return;
+    if (!gameState.auction.active) {
+        console.log('Subasta no activa');
+        return;
+    }
     
     const activeParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
+    console.log(`Participantes activos: ${activeParticipants.join(', ')}`);
     
     if (activeParticipants.length <= 1) {
+        console.log('Solo queda 1 participante o menos, terminando subasta');
         endAuction();
         return;
     }
     
     const currentPlayer = activeParticipants[gameState.auction.turn % activeParticipants.length];
+    console.log(`Turno de: ${currentPlayer}`);
+    
     if (elements.currentTurn) {
         elements.currentTurn.textContent = getPlayerDisplayName(currentPlayer);
     }
     
     if (currentPlayer === 'human') {
+        console.log('Es turno del jugador humano');
         enableHumanControls();
     } else {
+        console.log(`Es turno de ${currentPlayer}`);
         setTimeout(() => processAITurn(currentPlayer), 1500);
     }
 }
@@ -207,25 +231,45 @@ function enableHumanControls() {
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     const canBid = gameState.players.human.budget >= nextBid;
     
+    console.log(`Turno humano - Puja actual: €${gameState.auction.currentBid}M, Siguiente: €${nextBid}M, Presupuesto: €${gameState.players.human.budget}M, Puede pujar: ${canBid}`);
+    
     if (elements.bidBtn) {
         elements.bidBtn.disabled = !canBid;
         elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
+        
+        // Debug: forzar habilitar si hay presupuesto suficiente
+        if (canBid) {
+            elements.bidBtn.style.opacity = '1';
+            elements.bidBtn.style.cursor = 'pointer';
+        } else {
+            elements.bidBtn.style.opacity = '0.5';
+            elements.bidBtn.style.cursor = 'not-allowed';
+            addMessage(`❌ Presupuesto insuficiente para pujar €${nextBid}M`);
+        }
     }
     
     if (elements.passBtn) {
         elements.passBtn.disabled = false;
+        elements.passBtn.style.opacity = '1';
+        elements.passBtn.style.cursor = 'pointer';
     }
     
     // Verificar si es obligatorio pujar
     const remainingPlayers = gameState.currentPlayers.filter(p => !p.assigned);
     const remainingParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
     
+    console.log(`Jugadores restantes: ${remainingPlayers.length}, Participantes activos: ${remainingParticipants.length}`);
+    
     if (remainingPlayers.length >= remainingParticipants.length && remainingParticipants.length <= 2) {
         if (elements.passBtn) {
             elements.passBtn.disabled = true;
+            elements.passBtn.style.opacity = '0.5';
+            elements.passBtn.style.cursor = 'not-allowed';
         }
-        addMessage("⚠️ No puedes pasar, debes quedarte with un jugador.");
+        addMessage("⚠️ No puedes pasar, debes quedarte con un jugador.");
     }
+    
+    addMessage(`💡 Tu turno: Presupuesto €${gameState.players.human.budget}M`);
 }
 
 // Procesar turno de IA
@@ -278,23 +322,45 @@ function calculateAIInterest(player, aiPlayer) {
 
 // Jugador humano puja
 function makeBid() {
-    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
+    console.log('Intentando hacer puja...');
     
-    if (gameState.players.human.budget >= nextBid) {
+    if (!gameState.auction.active) {
+        console.log('Subasta no activa');
+        addMessage('❌ No hay subasta activa');
+        return;
+    }
+    
+    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
+    const humanBudget = gameState.players.human.budget;
+    
+    console.log(`Puja: €${nextBid}M, Presupuesto: €${humanBudget}M`);
+    
+    if (humanBudget >= nextBid) {
         gameState.auction.currentBid = nextBid;
         gameState.auction.currentBidder = 'human';
-        gameState.players.human.budget -= BID_INCREMENT;
+        gameState.players.human.budget = humanBudget - BID_INCREMENT;
+        
+        console.log(`Puja realizada. Nuevo presupuesto: €${gameState.players.human.budget}M`);
         
         addMessage(`✅ Pujaste €${nextBid}M`);
         updateBudgetDisplay();
         updateAuctionDisplay();
         
         // Deshabilitar controles
-        if (elements.bidBtn) elements.bidBtn.disabled = true;
-        if (elements.passBtn) elements.passBtn.disabled = true;
+        if (elements.bidBtn) {
+            elements.bidBtn.disabled = true;
+            elements.bidBtn.style.opacity = '0.5';
+        }
+        if (elements.passBtn) {
+            elements.passBtn.disabled = true;
+            elements.passBtn.style.opacity = '0.5';
+        }
         
         gameState.auction.turn++;
         setTimeout(() => processTurn(), 1000);
+    } else {
+        console.log('Presupuesto insuficiente');
+        addMessage(`❌ No tienes suficiente presupuesto. Necesitas €${nextBid}M pero tienes €${humanBudget}M`);
     }
 }
 
