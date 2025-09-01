@@ -71,14 +71,25 @@ const playersData = {
 
 // Inicialización del juego
 function initGame() {
+    console.log('Inicializando juego...');
+    
+    // Verificar que los elementos existen
+    if (!elements.startBtn) {
+        console.error('Botón de inicio no encontrado');
+        return;
+    }
+    
     elements.startBtn.addEventListener('click', startGame);
-    elements.bidBtn.addEventListener('click', makeBid);
-    elements.passBtn.addEventListener('click', passTurn);
+    elements.bidBtn?.addEventListener('click', makeBid);
+    elements.passBtn?.addEventListener('click', passTurn);
+    
     updateBudgetDisplay();
+    console.log('Juego inicializado correctamente');
 }
 
 // Iniciar juego
 function startGame() {
+    console.log('Iniciando juego...');
     elements.startBtn.style.display = 'none';
     gameState.currentRound = 1;
     gameState.currentPosition = 0;
@@ -122,6 +133,8 @@ function selectRandomPlayers(position) {
 
 // Mostrar jugadores en el grid
 function displayPlayers() {
+    if (!elements.playersGrid) return;
+    
     elements.playersGrid.innerHTML = '';
     
     gameState.currentPlayers.forEach((player, index) => {
@@ -142,7 +155,6 @@ function displayPlayers() {
 // Iniciar subasta de jugador
 function startPlayerAuction(playerIndex) {
     if (playerIndex >= gameState.currentPlayers.length) {
-        // Todos los jugadores han sido subastados
         checkRoundCompletion();
         return;
     }
@@ -156,7 +168,9 @@ function startPlayerAuction(playerIndex) {
     gameState.auction.passed = new Set();
     
     // Mostrar panel de subasta
-    elements.auctionPanel.style.display = 'block';
+    if (elements.auctionPanel) {
+        elements.auctionPanel.style.display = 'block';
+    }
     updateAuctionDisplay();
     
     addMessage(`💰 ¡Subasta iniciada por ${player.nacionalidad} ${player.posicion}! Precio base: €${player.precio}M`);
@@ -172,19 +186,18 @@ function processTurn() {
     const activeParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
     
     if (activeParticipants.length <= 1) {
-        // Solo queda un participante o menos
         endAuction();
         return;
     }
     
     const currentPlayer = activeParticipants[gameState.auction.turn % activeParticipants.length];
-    elements.currentTurn.textContent = getPlayerDisplayName(currentPlayer);
+    if (elements.currentTurn) {
+        elements.currentTurn.textContent = getPlayerDisplayName(currentPlayer);
+    }
     
     if (currentPlayer === 'human') {
-        // Turno del jugador humano
         enableHumanControls();
     } else {
-        // Turno de la IA
         setTimeout(() => processAITurn(currentPlayer), 1500);
     }
 }
@@ -194,17 +207,24 @@ function enableHumanControls() {
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     const canBid = gameState.players.human.budget >= nextBid;
     
-    elements.bidBtn.disabled = !canBid;
-    elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
-    elements.passBtn.disabled = false;
+    if (elements.bidBtn) {
+        elements.bidBtn.disabled = !canBid;
+        elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
+    }
     
-    // Verificar si es obligatorio pujar (última oportunidad)
+    if (elements.passBtn) {
+        elements.passBtn.disabled = false;
+    }
+    
+    // Verificar si es obligatorio pujar
     const remainingPlayers = gameState.currentPlayers.filter(p => !p.assigned);
     const remainingParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
     
     if (remainingPlayers.length >= remainingParticipants.length && remainingParticipants.length <= 2) {
-        elements.passBtn.disabled = true;
-        addMessage("⚠️ No puedes pasar, debes quedarte con un jugador.");
+        if (elements.passBtn) {
+            elements.passBtn.disabled = true;
+        }
+        addMessage("⚠️ No puedes pasar, debes quedarte with un jugador.");
     }
 }
 
@@ -230,6 +250,51 @@ function processAITurn(aiPlayer) {
         
         gameState.auction.turn++;
         setTimeout(() => processTurn(), 1000);
+    } else {
+        // IA pasa
+        gameState.auction.passed.add(aiPlayer);
+        addMessage(`🤖 ${getPlayerDisplayName(aiPlayer)} pasa`);
+        
+        gameState.auction.turn++;
+        setTimeout(() => processTurn(), 1000);
+    }
+}
+
+// Calcular interés de IA en jugador
+function calculateAIInterest(player, aiPlayer) {
+    let baseInterest = 0.6;
+    
+    // Mayor interés por jugadores más caros
+    if (player.precio >= 80) baseInterest = 0.8;
+    else if (player.precio >= 60) baseInterest = 0.7;
+    else if (player.precio >= 40) baseInterest = 0.6;
+    else baseInterest = 0.4;
+    
+    // Variación aleatoria por IA
+    const variation = (Math.random() - 0.5) * 0.3;
+    
+    return Math.max(0.2, Math.min(0.9, baseInterest + variation));
+}
+
+// Jugador humano puja
+function makeBid() {
+    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
+    
+    if (gameState.players.human.budget >= nextBid) {
+        gameState.auction.currentBid = nextBid;
+        gameState.auction.currentBidder = 'human';
+        gameState.players.human.budget -= BID_INCREMENT;
+        
+        addMessage(`✅ Pujaste €${nextBid}M`);
+        updateBudgetDisplay();
+        updateAuctionDisplay();
+        
+        // Deshabilitar controles
+        if (elements.bidBtn) elements.bidBtn.disabled = true;
+        if (elements.passBtn) elements.passBtn.disabled = true;
+        
+        gameState.auction.turn++;
+        setTimeout(() => processTurn(), 1000);
     }
 }
 
@@ -239,8 +304,8 @@ function passTurn() {
     addMessage(`❌ Pasaste tu turno`);
     
     // Deshabilitar controles
-    elements.bidBtn.disabled = true;
-    elements.passBtn.disabled = true;
+    if (elements.bidBtn) elements.bidBtn.disabled = true;
+    if (elements.passBtn) elements.passBtn.disabled = true;
     
     gameState.auction.turn++;
     setTimeout(() => processTurn(), 1000);
@@ -260,7 +325,7 @@ function endAuction() {
         player.winner = winner;
         player.finalPrice = finalPrice;
         
-        // Remover al ganador de los participantes de esta ronda
+        // Remover al ganador de los participantes
         gameState.auction.participants = gameState.auction.participants.filter(p => p !== winner);
         
         // Mostrar revelación
@@ -273,6 +338,13 @@ function endAuction() {
 
 // Mostrar revelación del jugador
 function showPlayerReveal(player, winner, price) {
+    if (!elements.revealModal || !elements.countdown) {
+        // Si no existe el modal, agregar directamente
+        addPlayerToSquad(player, winner);
+        startNextAuction();
+        return;
+    }
+    
     elements.revealModal.style.display = 'flex';
     
     let countdown = 3;
@@ -287,11 +359,14 @@ function showPlayerReveal(player, winner, price) {
             
             // Revelar información del jugador
             elements.countdown.textContent = '🎊';
-            document.querySelector('.reveal-text').innerHTML = `
-                <div style="font-size: 28px; margin: 20px 0; color: #FFD700;">${player.nombre}</div>
-                <div style="font-size: 18px; margin: 10px 0;">${player.club}</div>
-                <div style="font-size: 16px; opacity: 0.8;">€${price}M</div>
-            `;
+            const revealText = document.querySelector('.reveal-text');
+            if (revealText) {
+                revealText.innerHTML = `
+                    <div style="font-size: 28px; margin: 20px 0; color: #FFD700;">${player.nombre}</div>
+                    <div style="font-size: 18px; margin: 10px 0;">${player.club}</div>
+                    <div style="font-size: 16px; opacity: 0.8;">€${price}M</div>
+                `;
+            }
             
             // Agregar a la plantilla
             addPlayerToSquad(player, winner);
@@ -318,6 +393,8 @@ function addPlayerToSquad(player, winner) {
 
 // Actualizar visualización de la formación
 function updateFormationDisplay() {
+    if (!elements.formation) return;
+    
     const humanSquad = gameState.players.human.squad;
     const positionSlots = {
         porteros: elements.formation.querySelectorAll('[data-position="porteros"]'),
@@ -375,7 +452,9 @@ function getPlayerFormationPosition(position) {
 
 // Iniciar siguiente subasta
 function startNextAuction() {
-    elements.auctionPanel.style.display = 'none';
+    if (elements.auctionPanel) {
+        elements.auctionPanel.style.display = 'none';
+    }
     
     // Buscar siguiente jugador no asignado
     const nextPlayerIndex = gameState.currentPlayers.findIndex(p => !p.assigned);
@@ -383,7 +462,6 @@ function startNextAuction() {
     if (nextPlayerIndex !== -1) {
         setTimeout(() => startPlayerAuction(nextPlayerIndex), 1000);
     } else {
-        // Todos los jugadores de esta ronda han sido asignados
         checkRoundCompletion();
     }
 }
@@ -397,7 +475,6 @@ function checkRoundCompletion() {
         gameState.currentPosition++;
         
         if (gameState.currentPosition >= POSITIONS_ORDER.length) {
-            // Juego completado
             endGame();
         } else {
             // Nueva posición
@@ -416,7 +493,6 @@ function checkRoundCompletion() {
 function endGame() {
     addMessage(`🏆 ¡JUEGO COMPLETADO! Tu plantilla está lista.`, true);
     
-    // Mostrar resumen final
     const humanSquad = gameState.players.human.squad;
     const totalSpent = INITIAL_BUDGET - gameState.players.human.budget;
     
@@ -433,19 +509,27 @@ function endGame() {
 
 // Actualizar visualización de presupuestos
 function updateBudgetDisplay() {
-    document.getElementById('human-budget').textContent = `€${gameState.players.human.budget}M`;
-    document.getElementById('ia1-budget').textContent = `€${gameState.players.ia1.budget}M`;
-    document.getElementById('ia2-budget').textContent = `€${gameState.players.ia2.budget}M`;
-    document.getElementById('ia3-budget').textContent = `€${gameState.players.ia3.budget}M`;
+    const humanBudget = document.getElementById('human-budget');
+    const ia1Budget = document.getElementById('ia1-budget');
+    const ia2Budget = document.getElementById('ia2-budget');
+    const ia3Budget = document.getElementById('ia3-budget');
+    
+    if (humanBudget) humanBudget.textContent = `€${gameState.players.human.budget}M`;
+    if (ia1Budget) ia1Budget.textContent = `€${gameState.players.ia1.budget}M`;
+    if (ia2Budget) ia2Budget.textContent = `€${gameState.players.ia2.budget}M`;
+    if (ia3Budget) ia3Budget.textContent = `€${gameState.players.ia3.budget}M`;
 }
 
 // Actualizar visualización de subasta
 function updateAuctionDisplay() {
     const player = gameState.auction.currentPlayer;
     
-    document.getElementById('auction-flag').textContent = player.nacionalidad;
-    document.getElementById('auction-position').textContent = player.posicion;
-    elements.currentBid.textContent = `€${gameState.auction.currentBid}M`;
+    const auctionFlag = document.getElementById('auction-flag');
+    const auctionPosition = document.getElementById('auction-position');
+    
+    if (auctionFlag) auctionFlag.textContent = player.nacionalidad;
+    if (auctionPosition) auctionPosition.textContent = player.posicion;
+    if (elements.currentBid) elements.currentBid.textContent = `€${gameState.auction.currentBid}M`;
 }
 
 // Obtener nombre de jugador para mostrar
@@ -461,6 +545,8 @@ function getPlayerDisplayName(player) {
 
 // Agregar mensaje al área de mensajes
 function addMessage(text, highlight = false) {
+    if (!elements.messagesContainer) return;
+    
     const message = document.createElement('div');
     message.className = `message ${highlight ? 'highlight' : ''}`;
     message.textContent = text;
@@ -477,9 +563,8 @@ function addMessage(text, highlight = false) {
     elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
 }
 
-// Datos de ejemplo para testing (en caso de que no existan los archivos)
-if (Object.values(playersData).every(arr => arr.length === 0)) {
-    // Crear datos de ejemplo
+// Crear datos de ejemplo para testing
+function createTestData() {
     playersData.porteros = [
         { nombre: 'Gianluigi Donnarumma', club: 'PSG', nacionalidad: '🇮🇹', posicion: 'POR', precio: 60 },
         { nombre: 'Thibaut Courtois', club: 'Real Madrid', nacionalidad: '🇧🇪', posicion: 'POR', precio: 65 },
@@ -496,65 +581,29 @@ if (Object.values(playersData).every(arr => arr.length === 0)) {
         { nombre: 'Alessandro Bastoni', club: 'Inter Milan', nacionalidad: '🇮🇹', posicion: 'DFC', precio: 55 }
     ];
     
-    // Agregar datos básicos para otras posiciones
+    // Agregar datos para otras posiciones
     const positions = ['laterales', 'mediocentros', 'mediocentrodefensibo', 'mediocentroofensibo', 'extremoizquierdo', 'extremoderecho', 'delantero'];
     positions.forEach(pos => {
         if (playersData[pos].length === 0) {
             playersData[pos] = [
-                { nombre: 'Jugador 1', club: 'Club A', nacionalidad: '🇪🇸', posicion: 'MC', precio: 40 },
-                { nombre: 'Jugador 2', club: 'Club B', nacionalidad: '🇫🇷', posicion: 'MC', precio: 45 },
-                { nombre: 'Jugador 3', club: 'Club C', nacionalidad: '🇩🇪', posicion: 'MC', precio: 50 },
-                { nombre: 'Jugador 4', club: 'Club D', nacionalidad: '🇮🇹', posicion: 'MC', precio: 55 },
-                { nombre: 'Jugador 5', club: 'Club E', nacionalidad: '🇧🇷', posicion: 'MC', precio: 60 }
+                { nombre: `Jugador ${pos} 1`, club: 'Club A', nacionalidad: '🇪🇸', posicion: 'MC', precio: 40 },
+                { nombre: `Jugador ${pos} 2`, club: 'Club B', nacionalidad: '🇫🇷', posicion: 'MC', precio: 45 },
+                { nombre: `Jugador ${pos} 3`, club: 'Club C', nacionalidad: '🇩🇪', posicion: 'MC', precio: 50 },
+                { nombre: `Jugador ${pos} 4`, club: 'Club D', nacionalidad: '🇮🇹', posicion: 'MC', precio: 55 },
+                { nombre: `Jugador ${pos} 5`, club: 'Club E', nacionalidad: '🇧🇷', posicion: 'MC', precio: 60 }
             ];
         }
     });
 }
 
+// Verificar si necesitamos datos de prueba
+if (Object.values(playersData).every(arr => arr.length === 0)) {
+    console.log('Creando datos de prueba...');
+    createTestData();
+}
+
 // Inicializar cuando se carga la página
-document.addEventListener('DOMContentLoaded', initGame);000);
-    } else {
-        // IA pasa
-        gameState.auction.passed.add(aiPlayer);
-        addMessage(`🤖 ${getPlayerDisplayName(aiPlayer)} pasa`);
-        
-        gameState.auction.turn++;
-        setTimeout(() => processTurn(), 1000);
-    }
-}
-
-// Calcular interés de IA en jugador
-function calculateAIInterest(player, aiPlayer) {
-    let baseInterest = 0.6;
-    
-    // Mayor interés por jugadores más caros (considerados mejores)
-    if (player.precio >= 80) baseInterest = 0.8;
-    else if (player.precio >= 60) baseInterest = 0.7;
-    else if (player.precio >= 40) baseInterest = 0.6;
-    else baseInterest = 0.4;
-    
-    // Variación aleatoria por IA
-    const variation = (Math.random() - 0.5) * 0.3;
-    
-    return Math.max(0.2, Math.min(0.9, baseInterest + variation));
-}
-
-// Jugador humano puja
-function makeBid() {
-    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
-    
-    if (gameState.players.human.budget >= nextBid) {
-        gameState.auction.currentBid = nextBid;
-        gameState.auction.currentBidder = 'human';
-        gameState.players.human.budget -= BID_INCREMENT;
-        
-        addMessage(`✅ Pujaste €${nextBid}M`);
-        updateBudgetDisplay();
-        updateAuctionDisplay();
-        
-        // Deshabilitar controles
-        elements.bidBtn.disabled = true;
-        elements.passBtn.disabled = true;
-        
-        gameState.auction.turn++;
-        setTimeout(() => processTurn(), 1
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM cargado, inicializando...');
+    initGame();
+});
