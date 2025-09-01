@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mercado de Fichajes - Subasta</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- Header con presupuestos -->
+        <div class="budgets-panel">
+            <div class="budget-item human">
+                <h3>TÚ</h3>
+                <div class="budget-amount" id="human-budget">€200M</div>
+            </div>
+            <div class="budget-item ia">
+                <h3>IA 1</h3>
+                <div class="budget-amount" id="ia1-budget">€200M</div>
+            </div>
+            <div class="budget-item ia">
+                <h3>IA 2</h3>
+                <div class="budget-amount" id="ia2-budget">€200M</div>
+            </div>
+            <div class="budget-item ia">
+                <h3>IA 3</h3>
+                <div class="budget-amount" id="ia3-budget">€200M</div>
+            </div>
+        </div>
+
+        <!-- Información de la ronda actual -->
+        <div class="round-info">
+            <h2 id="round-title">Ronda 1: Porteros</h2>
+            <p id="round-subtitle">Selecciona tu portero para la formación 4-3-3</p>
+        </div>
+
+        <!-- Jugadores disponibles en la ronda -->
+        <div class="players-grid" id="players-grid">
+            <!-- Los jugadores se cargarán dinámicamente -->
+        </div>
+
+        <!-- Panel de subasta activa -->
+        <div class="auction-panel" id="auction-panel" style="display: none;">
+            <div class="auction-info">
+                <div class="current-player">
+                    <div class="player-card-auction">
+                        <div class="player-flag" id="auction-flag"></div>
+                        <div class="player-position" id="auction-position"></div>
+                        <div class="player-name hidden" id="auction-name">???</div>
+                        <div class="player-club hidden" id="auction-club">???</div>
+                    </div>
+                </div>
+                <div class="auction-status">
+                    <div class="current-bid">
+                        <span>Puja actual: </span>
+                        <span id="current-bid">€0M</span>
+                    </div>
+                    <div class="turn-info">
+                        <span>Turno de: </span>
+                        <span id="current-turn">TÚ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="auction-controls" id="auction-controls">
+                <button class="bid-btn" id="bid-btn">Pujar (+€5M)</button>
+                <button class="pass-btn" id="pass-btn">Pasar</button>
+            </div>
+        </div>
+
+        <!-- Área de mensajes -->
+        <div class="messages-area">
+            <div class="messages-container" id="messages-container">
+                <div class="message">¡Bienvenido al mercado de fichajes! Prepárate para la subasta.</div>
+            </div>
+        </div>
+
+        <!-- Plantilla del jugador -->
+        <div class="formation-panel">
+            <h3>Tu Formación (4-3-3)</h3>
+            <div class="formation" id="formation">
+                <div class="formation-line forward">
+                    <div class="formation-slot" data-position="extremoizquierdo">EI</div>
+                    <div class="formation-slot" data-position="delantero">DC</div>
+                    <div class="formation-slot" data-position="extremoderecho">ED</div>
+                </div>
+                <div class="formation-line midfield">
+                    <div class="formation-slot" data-position="mediocentroofensibo">MCO</div>
+                    <div class="formation-slot" data-position="mediocentros">MC</div>
+                    <div class="formation-slot" data-position="mediocentrodefensibo">MCD</div>
+                </div>
+                <div class="formation-line defense">
+                    <div class="formation-slot" data-position="laterales">LI</div>
+                    <div class="formation-slot" data-position="defensa">DFC</div>
+                    <div class="formation-slot" data-position="defensa">DFC</div>
+                    <div class="formation-slot" data-position="laterales">LD</div>
+                </div>
+                <div class="formation-line goalkeeper">
+                    <div class="formation-slot" data-position="porteros">POR</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de revelación -->
+        <div class="reveal-modal" id="reveal-modal" style="display: none;">
+            <div class="reveal-content">
+                <div class="countdown" id="countdown">3</div>
+                <div class="reveal-text">Revelando jugador...</div>
+            </div>
+        </div>
+
+        <!-- Botón para iniciar -->
+        <div class="start-section">
+            <button class="start-btn" id="start-btn">Iniciar Subasta</button>
+        </div>
+    </div>
+
+    <!-- Scripts de datos de jugadores -->
+    <script src="porteros.js"></script>
+    <script src="defensa.js"></script>
+    <script src="laterales.js"></script>
+    <script src="mediocentros.js"></script>
+    <script src="mediocentrodefensibo.js"></script>
+    <script src="mediocentroofensibo.js"></script>
+    <script src="extremoizquierdo.js"></script>
+    <script src="extremoderecho.js"></script>
+    <script src="delantero.js"></script>
+    
+    <!-- Script principal del juego -->
+    <script src="game.js"></script>
+</body>
+</html>
