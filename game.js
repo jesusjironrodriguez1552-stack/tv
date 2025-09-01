@@ -22,10 +22,10 @@ let gameState = {
     playersNeededInPosition: 0,
     totalPlayersNeeded: 11,
     players: {
-        human: { budget: INITIAL_BUDGET, squad: [], spent: 0 },
-        ia1: { budget: INITIAL_BUDGET, squad: [], spent: 0 },
-        ia2: { budget: INITIAL_BUDGET, squad: [], spent: 0 },
-        ia3: { budget: INITIAL_BUDGET, squad: [], spent: 0 }
+        human: { budget: INITIAL_BUDGET, squad: [], spent: 0, boughtThisRound: false },
+        ia1: { budget: INITIAL_BUDGET, squad: [], spent: 0, boughtThisRound: false },
+        ia2: { budget: INITIAL_BUDGET, squad: [], spent: 0, boughtThisRound: false },
+        ia3: { budget: INITIAL_BUDGET, squad: [], spent: 0, boughtThisRound: false }
     },
     currentPlayers: [],
     currentPlayerIndex: 0,
@@ -37,7 +37,8 @@ let gameState = {
         participants: ['human', 'ia1', 'ia2', 'ia3'],
         passed: new Set(),
         winningCountdown: null,
-        countdownActive: false
+        countdownActive: false,
+        aiThinking: false
     }
 };
 
@@ -99,6 +100,31 @@ const getPlayerDisplayName = (player) => ({
     human: 'TÚ', ia1: 'IA 1', ia2: 'IA 2', ia3: 'IA 3'
 }[player] || player);
 
+// Función para verificar si un jugador puede participar en la subasta
+function canPlayerParticipate(playerId, positionName) {
+    const player = gameState.players[playerId];
+    
+    // Verificar si ya compró en esta posición
+    const hasPositionPlayer = player.squad.some(p => {
+        const playerPosition = getPlayerFormationPosition(p.posicion);
+        return playerPosition === positionName;
+    });
+    
+    if (hasPositionPlayer) {
+        return false;
+    }
+    
+    // Verificar si necesita exactamente esta posición
+    const currentPositionData = POSITIONS_ORDER[gameState.currentPosition];
+    const neededCount = currentPositionData.count;
+    const hasCount = player.squad.filter(p => {
+        const playerPosition = getPlayerFormationPosition(p.posicion);
+        return playerPosition === positionName;
+    }).length;
+    
+    return hasCount < neededCount;
+}
+
 // Inicialización
 function initGame() {
     if (Object.values(playersData).every(arr => arr.length === 0)) {
@@ -152,6 +178,12 @@ function startGame() {
     gameState.currentPosition = 0;
     gameState.currentPlayerIndex = 0;
     gameState.playersNeededInPosition = POSITIONS_ORDER[0].count;
+    
+    // Resetear flags de compra
+    Object.values(gameState.players).forEach(player => {
+        player.boughtThisRound = false;
+    });
+    
     startNewRound();
 }
 
@@ -164,6 +196,11 @@ function startNewRound() {
     gameState.currentPlayers = selectRandomPlayers(position.name);
     displayPlayers();
     gameState.currentPlayerIndex = 0;
+    
+    // Resetear flags de compra para nueva ronda
+    Object.values(gameState.players).forEach(player => {
+        player.boughtThisRound = false;
+    });
     
     setTimeout(() => startPlayerAuction(), 1000);
 }
@@ -199,7 +236,7 @@ function displayPlayers() {
     });
 }
 
-// Sistema de subastas simplificado
+// Sistema de subastas mejorado
 function startPlayerAuction() {
     if (gameState.currentPlayerIndex >= gameState.currentPlayers.length) {
         checkRoundCompletion();
@@ -207,15 +244,29 @@ function startPlayerAuction() {
     }
     
     const player = gameState.currentPlayers[gameState.currentPlayerIndex];
+    const currentPositionName = POSITIONS_ORDER[gameState.currentPosition].name;
+    
+    // Filtrar participantes que pueden comprar en esta posición
+    const eligibleParticipants = ['human', 'ia1', 'ia2', 'ia3'].filter(playerId => 
+        canPlayerParticipate(playerId, currentPositionName)
+    );
+    
+    if (eligibleParticipants.length === 0) {
+        updateAuctionStatus(`❌ Ningún jugador necesita esta posición. Saltando...`);
+        setTimeout(() => continueToNextPlayer(), 2000);
+        return;
+    }
+    
     gameState.auction = {
         active: true,
         currentPlayer: player,
         currentBid: Math.round(player.precio),
         currentBidder: null,
-        participants: ['human', 'ia1', 'ia2', 'ia3'],
+        participants: eligibleParticipants,
         passed: new Set(),
         winningCountdown: null,
-        countdownActive: false
+        countdownActive: false,
+        aiThinking: false
     };
     
     if (elements.auctionPanel) elements.auctionPanel.style.display = 'block';
@@ -224,71 +275,103 @@ function startPlayerAuction() {
     
     if (elements.biddingHistory) elements.biddingHistory.innerHTML = '';
     
-    enableHumanControls();
-    processAIActions();
+    // Actualizar controles del humano
+    updateHumanControls();
+    
+    // Iniciar proceso de pujas de IA
+    setTimeout(() => processAIActions(), 1500);
 }
 
 function processAIActions() {
-    if (!gameState.auction.active || gameState.auction.countdownActive) return;
+    if (!gameState.auction.active || gameState.auction.countdownActive || gameState.auction.aiThinking) {
+        return;
+    }
     
     const activeAIs = gameState.auction.participants.filter(p => 
         p !== 'human' && !gameState.auction.passed.has(p)
     );
     
-    if (activeAIs.length === 0 && !gameState.auction.passed.has('human')) {
-        return; // Solo el humano queda
-    }
-    
     if (activeAIs.length === 0) {
-        endAuction();
+        // Solo el humano queda o nadie queda
+        const humanActive = gameState.auction.participants.includes('human') && !gameState.auction.passed.has('human');
+        if (!humanActive) {
+            endAuction();
+        }
         return;
     }
     
-    // Decidir si una IA va a pujar
-    const shouldBid = Math.random() < 0.6;
+    // Marcar que la IA está "pensando"
+    gameState.auction.aiThinking = true;
+    updateAuctionStatus(`🤖 Las IAs están evaluando...`);
     
-    if (shouldBid) {
-        const randomAI = activeAIs[Math.floor(Math.random() * activeAIs.length)];
-        setTimeout(() => makeAIBid(randomAI), 1000 + Math.random() * 2000);
-    } else {
-        setTimeout(() => processAIActions(), 2000);
-    }
+    // Decidir qué IA va a actuar
+    const actingAI = activeAIs[Math.floor(Math.random() * activeAIs.length)];
+    const player = gameState.auction.currentPlayer;
+    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
+    const aiBudget = gameState.players[actingAI].budget;
+    
+    // Calcular interés de la IA
+    const baseInterest = player.precio >= 60 ? 0.6 : 0.4;
+    const budgetFactor = aiBudget > 100 ? 1.1 : 0.9;
+    const interest = Math.min(0.8, baseInterest * budgetFactor);
+    const maxAffordable = Math.min(aiBudget, player.precio * 1.8);
+    
+    const shouldBid = nextBid <= maxAffordable && Math.random() < interest;
+    
+    setTimeout(() => {
+        gameState.auction.aiThinking = false;
+        
+        if (shouldBid) {
+            makeAIBid(actingAI);
+        } else {
+            makeAIPass(actingAI);
+        }
+    }, 1500 + Math.random() * 1500); // Tiempo de "pensamiento" variable
 }
 
 function makeAIBid(aiPlayer) {
     if (!gameState.auction.active || gameState.auction.countdownActive) return;
     
-    const player = gameState.auction.currentPlayer;
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
-    const aiBudget = gameState.players[aiPlayer].budget;
     
-    const baseInterest = player.precio >= 60 ? 0.7 : 0.5;
-    const budgetFactor = aiBudget > 100 ? 1.2 : 0.8;
-    const interest = Math.min(0.9, baseInterest * budgetFactor);
-    const maxAffordable = Math.min(aiBudget, player.precio * 1.5);
+    // Detener cualquier cuenta regresiva anterior
+    stopWinningCountdown();
     
-    if (nextBid <= maxAffordable && Math.random() < interest) {
-        stopWinningCountdown();
-        
-        gameState.auction.currentBid = nextBid;
-        gameState.auction.currentBidder = aiPlayer;
-        
-        addBiddingAction(`${getPlayerDisplayName(aiPlayer)} puja €${nextBid}M`, aiPlayer);
-        updateAuctionDisplay();
-        updateHumanControls();
-        
+    gameState.auction.currentBid = nextBid;
+    gameState.auction.currentBidder = aiPlayer;
+    
+    addBiddingAction(`${getPlayerDisplayName(aiPlayer)} puja €${nextBid}M`, aiPlayer);
+    updateAuctionDisplay();
+    updateHumanControls();
+    
+    // Iniciar cuenta regresiva solo si esta puja puede ganar
+    const activeParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
+    if (activeParticipants.length > 1) {
         startWinningCountdown(aiPlayer, nextBid);
-        setTimeout(() => processAIActions(), 1000);
-        
     } else {
-        gameState.auction.passed.add(aiPlayer);
-        addBiddingAction(`${getPlayerDisplayName(aiPlayer)} pasa`, aiPlayer);
+        // Si solo queda este participante, terminar subasta inmediatamente
+        endAuction();
+    }
+}
+
+function makeAIPass(aiPlayer) {
+    if (!gameState.auction.active) return;
+    
+    gameState.auction.passed.add(aiPlayer);
+    addBiddingAction(`${getPlayerDisplayName(aiPlayer)} pasa`, aiPlayer);
+    
+    // Verificar si quedan participantes activos
+    const activeParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
+    
+    if (activeParticipants.length <= 1) {
+        endAuction();
+    } else {
         setTimeout(() => processAIActions(), 1000);
     }
 }
 
 function makeBid() {
-    if (!gameState.auction.active) return;
+    if (!gameState.auction.active || gameState.auction.countdownActive) return;
     
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     
@@ -302,12 +385,24 @@ function makeBid() {
         updateAuctionDisplay();
         updateHumanControls();
         
-        startWinningCountdown('human', nextBid);
-        setTimeout(() => processAIActions(), 1000);
+        // Verificar si quedan otros participantes activos
+        const activeParticipants = gameState.auction.participants.filter(p => 
+            p !== 'human' && !gameState.auction.passed.has(p)
+        );
+        
+        if (activeParticipants.length > 0) {
+            startWinningCountdown('human', nextBid);
+            setTimeout(() => processAIActions(), 1000);
+        } else {
+            // El humano es el único participante activo
+            endAuction();
+        }
     }
 }
 
 function passTurn() {
+    if (!gameState.auction.active) return;
+    
     gameState.auction.passed.add('human');
     addBiddingAction(`TÚ pasas`, 'human');
     
@@ -326,15 +421,19 @@ function passTurn() {
 }
 
 function startWinningCountdown(bidder, bid) {
+    if (gameState.auction.winningCountdown) {
+        clearInterval(gameState.auction.winningCountdown);
+    }
+    
     gameState.auction.countdownActive = true;
     
-    let seconds = 3;
-    updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds} segundos...`);
+    let seconds = 5;
+    updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds}s restantes`);
     
     gameState.auction.winningCountdown = setInterval(() => {
         seconds--;
         if (seconds > 0) {
-            updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds} segundos...`);
+            updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds}s restantes`);
         } else {
             clearInterval(gameState.auction.winningCountdown);
             gameState.auction.countdownActive = false;
@@ -363,6 +462,7 @@ function endAuction() {
         // Actualizar presupuesto y gasto del ganador
         gameState.players[winner].budget -= finalPrice;
         gameState.players[winner].spent += finalPrice;
+        gameState.players[winner].boughtThisRound = true;
         
         updateAuctionStatus(`🎉 ${getPlayerDisplayName(winner)} compra por €${finalPrice}M`);
         
@@ -471,24 +571,32 @@ function endGame() {
     }, 1500);
 }
 
-function enableHumanControls() {
+function updateHumanControls() {
+    if (!gameState.auction.active) {
+        if (elements.bidBtn) elements.bidBtn.disabled = true;
+        if (elements.passBtn) elements.passBtn.disabled = true;
+        return;
+    }
+    
+    const currentPositionName = POSITIONS_ORDER[gameState.currentPosition].name;
+    const canParticipate = canPlayerParticipate('human', currentPositionName);
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
-    const canBid = gameState.players.human.budget >= nextBid;
+    const canAfford = gameState.players.human.budget >= nextBid;
+    const hasNotPassed = !gameState.auction.passed.has('human');
+    const isEligible = gameState.auction.participants.includes('human');
     
     if (elements.bidBtn) {
+        const canBid = canParticipate && canAfford && hasNotPassed && isEligible && !gameState.auction.countdownActive;
         elements.bidBtn.disabled = !canBid;
-        elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
+        elements.bidBtn.textContent = canParticipate ? `Pujar (€${nextBid}M)` : 'Ya tienes esta posición';
         elements.bidBtn.style.opacity = canBid ? '1' : '0.5';
     }
     
     if (elements.passBtn) {
-        elements.passBtn.disabled = false;
-        elements.passBtn.style.opacity = '1';
+        const canPass = hasNotPassed && isEligible && !gameState.auction.countdownActive;
+        elements.passBtn.disabled = !canPass;
+        elements.passBtn.style.opacity = canPass ? '1' : '0.5';
     }
-}
-
-function updateHumanControls() {
-    enableHumanControls();
 }
 
 // Funciones de interfaz
@@ -539,7 +647,7 @@ function addBiddingAction(action, player) {
     elements.biddingHistory.appendChild(actionElement);
     
     const actions = elements.biddingHistory.children;
-    if (actions.length > 6) {
+    if (actions.length > 8) {
         elements.biddingHistory.removeChild(actions[0]);
     }
     
