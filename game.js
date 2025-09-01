@@ -66,8 +66,86 @@ const playersData = {
     mediocentroofensibo: typeof mediocentroofensibo !== 'undefined' ? mediocentroofensibo : [],
     extremoizquierdo: typeof extremoizquierdo !== 'undefined' ? extremoizquierdo : [],
     extremoderecho: typeof extremoderecho !== 'undefined' ? extremoderecho : [],
-    delantero: typeof delantero !== 'undefined' ? delantero : []
+    delantero: typeof delanteros !== 'undefined' ? delanteros : [] // CORREGIDO: era 'delantero' ahora es 'delanteros'
 };
+
+// Función helper para obtener posición por defecto según el tipo de jugador
+function getDefaultPosition(positionKey) {
+    const positionMap = {
+        'porteros': 'POR',
+        'defensa': 'DFC',
+        'laterales': 'LD',
+        'mediocentros': 'MC',
+        'mediocentrodefensibo': 'MCD',
+        'mediocentroofensibo': 'MCO',
+        'extremoizquierdo': 'EI',
+        'extremoderecho': 'ED',
+        'delantero': 'DC'
+    };
+    return positionMap[positionKey] || 'MC';
+}
+
+// Función helper para obtener bandera del país
+function getCountryFlag(country) {
+    const flagMap = {
+        'Noruega': '🇳🇴',
+        'España': '🇪🇸',
+        'Francia': '🇫🇷',
+        'Brasil': '🇧🇷',
+        'Argentina': '🇦🇷',
+        'Inglaterra': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+        'Alemania': '🇩🇪',
+        'Italia': '🇮🇹',
+        'Portugal': '🇵🇹',
+        'Bélgica': '🇧🇪',
+        'Holanda': '🇳🇱',
+        'Países Bajos': '🇳🇱',
+        'Colombia': '🇨🇴',
+        'Polonia': '🇵🇱',
+        'Croatia': '🇭🇷',
+        'Croacia': '🇭🇷',
+        'Serbia': '🇷🇸',
+        'Marruecos': '🇲🇦',
+        'Senegal': '🇸🇳',
+        'Ghana': '🇬🇭',
+        'Uruguay': '🇺🇾',
+        'Chile': '🇨🇱',
+        'México': '🇲🇽',
+        'Estados Unidos': '🇺🇸',
+        'Canadá': '🇨🇦'
+    };
+    return flagMap[country] || '🏳️';
+}
+
+// Función para normalizar los datos del jugador
+function normalizePlayerData(player, positionKey) {
+    // Crear una copia del jugador para no modificar el original
+    const normalizedPlayer = { ...player };
+    
+    // Convertir precioTransferencia a precio
+    if (normalizedPlayer.precioTransferencia && !normalizedPlayer.precio) {
+        normalizedPlayer.precio = normalizedPlayer.precioTransferencia;
+    }
+    
+    // Agregar posición si no existe
+    if (!normalizedPlayer.posicion) {
+        normalizedPlayer.posicion = getDefaultPosition(positionKey);
+    }
+    
+    // Convertir nacionalidad a bandera si es necesario
+    if (normalizedPlayer.nacionalidad && !normalizedPlayer.nacionalidad.includes('🏳️') && !normalizedPlayer.nacionalidad.includes('🇦')) {
+        normalizedPlayer.nacionalidad = getCountryFlag(normalizedPlayer.nacionalidad);
+    }
+    
+    // Crear nombre completo si tiene nombre y apellido separados
+    if (!normalizedPlayer.nombre && normalizedPlayer.nombre && normalizedPlayer.apellido) {
+        normalizedPlayer.nombre = `${normalizedPlayer.nombre} ${normalizedPlayer.apellido}`;
+    } else if (normalizedPlayer.nombre && normalizedPlayer.apellido && !normalizedPlayer.nombre.includes(normalizedPlayer.apellido)) {
+        normalizedPlayer.nombre = `${normalizedPlayer.nombre} ${normalizedPlayer.apellido}`;
+    }
+    
+    return normalizedPlayer;
+}
 
 // Inicialización del juego
 function initGame() {
@@ -133,14 +211,18 @@ function startNewRound() {
     setTimeout(() => startPlayerAuction(0), 1000);
 }
 
-// Seleccionar jugadores aleatorios
+// Seleccionar jugadores aleatorios - MODIFICADO para normalizar datos
 function selectRandomPlayers(position) {
     const availablePlayers = [...playersData[position]];
     const selectedPlayers = [];
     
     for (let i = 0; i < PLAYERS_PER_ROUND && availablePlayers.length > 0; i++) {
         const randomIndex = Math.floor(Math.random() * availablePlayers.length);
-        selectedPlayers.push(availablePlayers.splice(randomIndex, 1)[0]);
+        const rawPlayer = availablePlayers.splice(randomIndex, 1)[0];
+        
+        // Normalizar los datos del jugador
+        const normalizedPlayer = normalizePlayerData(rawPlayer, position);
+        selectedPlayers.push(normalizedPlayer);
     }
     
     return selectedPlayers;
@@ -457,7 +539,7 @@ function addPlayerToSquad(player, winner) {
     addMessage(`✨ ${getPlayerDisplayName(winner)} fichó a ${player.nombre} por €${player.finalPrice}M`, true);
 }
 
-// Actualizar visualización de la formación
+// Actualizar visualización de la formación - MODIFICADO para manejar nombres con apellidos
 function updateFormationDisplay() {
     if (!elements.formation) return;
     
@@ -491,7 +573,9 @@ function updateFormationDisplay() {
             const emptySlot = Array.from(slots).find(slot => !slot.classList.contains('filled'));
             if (emptySlot) {
                 emptySlot.classList.add('filled');
-                emptySlot.textContent = player.nombre.split(' ')[0];
+                // Mostrar solo el primer nombre si es muy largo
+                const displayName = player.nombre.length > 10 ? player.nombre.split(' ')[0] : player.nombre.split(' ')[0];
+                emptySlot.textContent = displayName;
                 emptySlot.title = `${player.nombre} (€${player.finalPrice}M)`;
             }
         }
@@ -652,11 +736,11 @@ function createTestData() {
     positions.forEach(pos => {
         if (playersData[pos].length === 0) {
             playersData[pos] = [
-                { nombre: `Jugador ${pos} 1`, club: 'Club A', nacionalidad: '🇪🇸', posicion: 'MC', precio: 40 },
-                { nombre: `Jugador ${pos} 2`, club: 'Club B', nacionalidad: '🇫🇷', posicion: 'MC', precio: 45 },
-                { nombre: `Jugador ${pos} 3`, club: 'Club C', nacionalidad: '🇩🇪', posicion: 'MC', precio: 50 },
-                { nombre: `Jugador ${pos} 4`, club: 'Club D', nacionalidad: '🇮🇹', posicion: 'MC', precio: 55 },
-                { nombre: `Jugador ${pos} 5`, club: 'Club E', nacionalidad: '🇧🇷', posicion: 'MC', precio: 60 }
+                { nombre: `Jugador ${pos} 1`, club: 'Club A', nacionalidad: '🇪🇸', posicion: 'MC', precioTransferencia: 40 },
+                { nombre: `Jugador ${pos} 2`, club: 'Club B', nacionalidad: '🇫🇷', posicion: 'MC', precioTransferencia: 45 },
+                { nombre: `Jugador ${pos} 3`, club: 'Club C', nacionalidad: '🇩🇪', posicion: 'MC', precioTransferencia: 50 },
+                { nombre: `Jugador ${pos} 4`, club: 'Club D', nacionalidad: '🇮🇹', posicion: 'MC', precioTransferencia: 55 },
+                { nombre: `Jugador ${pos} 5`, club: 'Club E', nacionalidad: '🇧🇷', posicion: 'MC', precioTransferencia: 60 }
             ];
         }
     });
