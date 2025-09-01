@@ -1,9 +1,8 @@
 // Configuración del juego
-const INITIAL_BUDGET = 200; // millones
-const BID_INCREMENT = 5; // millones
+const INITIAL_BUDGET = 200;
+const BID_INCREMENT = 5;
 const PLAYERS_PER_ROUND = 5;
 
-// Posiciones en orden para la formación 4-3-3
 const POSITIONS_ORDER = [
     { name: 'porteros', display: 'Porteros', count: 1 },
     { name: 'defensa', display: 'Defensas Centrales', count: 2 },
@@ -21,6 +20,7 @@ let gameState = {
     currentRound: 0,
     currentPosition: 0,
     playersNeededInPosition: 0,
+    totalPlayersNeeded: 11,
     players: {
         human: { budget: INITIAL_BUDGET, squad: [] },
         ia1: { budget: INITIAL_BUDGET, squad: [] },
@@ -48,7 +48,6 @@ const elements = {
     passBtn: document.getElementById('pass-btn'),
     currentBid: document.getElementById('current-bid'),
     currentTurn: document.getElementById('current-turn'),
-    messagesContainer: document.getElementById('messages-container'),
     roundTitle: document.getElementById('round-title'),
     roundSubtitle: document.getElementById('round-subtitle'),
     revealModal: document.getElementById('reveal-modal'),
@@ -58,7 +57,7 @@ const elements = {
     biddingHistory: document.getElementById('bidding-history')
 };
 
-// Mapeo de datos de jugadores
+// Datos de jugadores con fallback
 const playersData = {
     porteros: typeof porteros !== 'undefined' ? porteros : [],
     defensa: typeof defensa !== 'undefined' ? defensa : [],
@@ -71,74 +70,86 @@ const playersData = {
     delantero: typeof delanteros !== 'undefined' ? delanteros : []
 };
 
-// Función helper para obtener posición por defecto según el tipo de jugador
-function getDefaultPosition(positionKey) {
-    const positionMap = {
-        'porteros': 'POR',
-        'defensa': 'DFC',
-        'laterales': 'LD',
-        'mediocentros': 'MC',
-        'mediocentrodefensibo': 'MCD',
-        'mediocentroofensibo': 'MCO',
-        'extremoizquierdo': 'EI',
-        'extremoderecho': 'ED',
-        'delantero': 'DC'
+// Funciones de utilidad
+const getDefaultPosition = (positionKey) => {
+    const map = {
+        'porteros': 'POR', 'defensa': 'DFC', 'laterales': 'LD', 'mediocentros': 'MC',
+        'mediocentrodefensibo': 'MCD', 'mediocentroofensibo': 'MCO', 
+        'extremoizquierdo': 'EI', 'extremoderecho': 'ED', 'delantero': 'DC'
     };
-    return positionMap[positionKey] || 'MC';
-}
+    return map[positionKey] || 'MC';
+};
 
-// Función para normalizar los datos del jugador
-function normalizePlayerData(player, positionKey) {
-    const normalizedPlayer = { ...player };
-    
-    // Convertir precioTransferencia a precio
-    if (normalizedPlayer.precioTransferencia && !normalizedPlayer.precio) {
-        normalizedPlayer.precio = normalizedPlayer.precioTransferencia;
+const normalizePlayerData = (player, positionKey) => {
+    const normalized = { ...player };
+    if (normalized.precioTransferencia && !normalized.precio) {
+        normalized.precio = normalized.precioTransferencia;
     }
-    
-    // Agregar posición si no existe
-    if (!normalizedPlayer.posicion) {
-        normalizedPlayer.posicion = getDefaultPosition(positionKey);
+    if (!normalized.posicion) {
+        normalized.posicion = getDefaultPosition(positionKey);
     }
-    
-    // Crear nombre completo si tiene nombre y apellido separados
-    if (!normalizedPlayer.nombre && normalizedPlayer.nombre && normalizedPlayer.apellido) {
-        normalizedPlayer.nombre = `${normalizedPlayer.nombre} ${normalizedPlayer.apellido}`;
-    } else if (normalizedPlayer.nombre && normalizedPlayer.apellido && !normalizedPlayer.nombre.includes(normalizedPlayer.apellido)) {
-        normalizedPlayer.nombre = `${normalizedPlayer.nombre} ${normalizedPlayer.apellido}`;
+    if (normalized.nombre && normalized.apellido && !normalized.nombre.includes(normalized.apellido)) {
+        normalized.nombre = `${normalized.nombre} ${normalized.apellido}`;
     }
-    
-    return normalizedPlayer;
-}
+    return normalized;
+};
 
-// Inicialización del juego
+const getPlayerDisplayName = (player) => ({
+    human: 'TÚ', ia1: 'IA 1', ia2: 'IA 2', ia3: 'IA 3'
+}[player] || player);
+
+// Inicialización
 function initGame() {
     console.log('Inicializando juego...');
     
-    if (!elements.startBtn) {
-        console.error('Botón de inicio no encontrado');
-        return;
+    // Crear datos de prueba si no existen
+    if (Object.values(playersData).every(arr => arr.length === 0)) {
+        createTestData();
     }
     
-    elements.startBtn.addEventListener('click', startGame);
+    elements.startBtn?.addEventListener('click', startGame);
+    elements.bidBtn?.addEventListener('click', makeBid);
+    elements.passBtn?.addEventListener('click', passTurn);
     
-    if (elements.bidBtn) {
-        elements.bidBtn.addEventListener('click', makeBid);
-        elements.bidBtn.disabled = true;
-    }
-    
-    if (elements.passBtn) {
-        elements.passBtn.addEventListener('click', passTurn);
-        elements.passBtn.disabled = true;
-    }
+    if (elements.bidBtn) elements.bidBtn.disabled = true;
+    if (elements.passBtn) elements.passBtn.disabled = true;
     
     updateBudgetDisplay();
-    console.log('Juego inicializado correctamente');
 }
 
-// Iniciar juego
+// Crear datos de prueba
+function createTestData() {
+    const testPlayers = {
+        porteros: [
+            { nombre: 'Ter Stegen', club: 'Barcelona', precio: 60 },
+            { nombre: 'Courtois', club: 'Real Madrid', precio: 65 },
+            { nombre: 'Oblak', club: 'Atlético', precio: 70 },
+            { nombre: 'Alisson', club: 'Liverpool', precio: 75 },
+            { nombre: 'Donnarumma', club: 'PSG', precio: 55 }
+        ],
+        defensa: [
+            { nombre: 'Van Dijk', club: 'Liverpool', precio: 80 },
+            { nombre: 'Ramos', club: 'Sevilla', precio: 70 },
+            { nombre: 'Marquinhos', club: 'PSG', precio: 65 },
+            { nombre: 'Dias', club: 'Man City', precio: 75 },
+            { nombre: 'Koulibaly', club: 'Chelsea', precio: 60 }
+        ]
+    };
+    
+    // Llenar todas las posiciones con datos de prueba
+    Object.keys(playersData).forEach(pos => {
+        if (playersData[pos].length === 0) {
+            playersData[pos] = testPlayers[pos] || Array.from({length: 5}, (_, i) => ({
+                nombre: `Jugador ${pos} ${i+1}`,
+                club: `Club ${String.fromCharCode(65+i)}`,
+                precio: 30 + Math.random() * 50
+            }));
+        }
+    });
+}
+
+// Control del juego
 function startGame() {
-    console.log('Iniciando juego...');
     elements.startBtn.style.display = 'none';
     gameState.currentRound = 1;
     gameState.currentPosition = 0;
@@ -146,68 +157,57 @@ function startGame() {
     startNewRound();
 }
 
-// Iniciar nueva ronda
 function startNewRound() {
     const position = POSITIONS_ORDER[gameState.currentPosition];
     
     elements.roundTitle.textContent = `Ronda ${gameState.currentRound}: ${position.display}`;
-    elements.roundSubtitle.textContent = `Selecciona ${position.count} ${position.display.toLowerCase()} para tu formación 4-3-3`;
+    elements.roundSubtitle.textContent = `Selecciona ${position.count} ${position.display.toLowerCase()}`;
     
-    updateAuctionStatus(`🏆 Nueva ronda iniciada - Buscando ${position.display}...`);
+    updateAuctionStatus(`🏆 Nueva ronda - Buscando ${position.display}...`);
     
-    // Seleccionar 5 jugadores aleatorios únicos
     gameState.currentPlayers = selectRandomPlayers(position.name);
     displayPlayers();
     
-    // Resetear subasta
     gameState.auction.participants = ['human', 'ia1', 'ia2', 'ia3'];
     gameState.auction.passed = new Set();
     
-    // Limpiar historial de pujas
-    if (elements.biddingHistory) {
-        elements.biddingHistory.innerHTML = '';
-    }
+    if (elements.biddingHistory) elements.biddingHistory.innerHTML = '';
     
-    // Iniciar primera subasta
     setTimeout(() => startPlayerAuction(0), 1000);
 }
 
-// Seleccionar jugadores aleatorios
 function selectRandomPlayers(position) {
-    const availablePlayers = [...playersData[position]];
-    const selectedPlayers = [];
+    const available = [...playersData[position]];
+    const selected = [];
     
-    for (let i = 0; i < PLAYERS_PER_ROUND && availablePlayers.length > 0; i++) {
-        const randomIndex = Math.floor(Math.random() * availablePlayers.length);
-        const rawPlayer = availablePlayers.splice(randomIndex, 1)[0];
-        const normalizedPlayer = normalizePlayerData(rawPlayer, position);
-        selectedPlayers.push(normalizedPlayer);
+    for (let i = 0; i < PLAYERS_PER_ROUND && available.length > 0; i++) {
+        const randomIndex = Math.floor(Math.random() * available.length);
+        const player = available.splice(randomIndex, 1)[0];
+        selected.push(normalizePlayerData(player, position));
     }
     
-    return selectedPlayers;
+    return selected;
 }
 
-// Mostrar jugadores en el grid - SIN BANDERAS
 function displayPlayers() {
     if (!elements.playersGrid) return;
     
     elements.playersGrid.innerHTML = '';
     
     gameState.currentPlayers.forEach((player, index) => {
-        const playerCard = document.createElement('div');
-        playerCard.className = 'player-card';
-        playerCard.innerHTML = `
+        const card = document.createElement('div');
+        card.className = 'player-card';
+        card.innerHTML = `
             <div class="player-position">${player.posicion}</div>
             <div class="player-name hidden">???</div>
             <div class="player-club hidden">???</div>
-            <div class="player-price">€${player.precio}M</div>
+            <div class="player-price">€${Math.round(player.precio)}M</div>
         `;
-        
-        elements.playersGrid.appendChild(playerCard);
+        elements.playersGrid.appendChild(card);
     });
 }
 
-// Iniciar subasta de jugador
+// Sistema de subastas
 function startPlayerAuction(playerIndex) {
     if (playerIndex >= gameState.currentPlayers.length) {
         checkRoundCompletion();
@@ -215,31 +215,25 @@ function startPlayerAuction(playerIndex) {
     }
     
     const player = gameState.currentPlayers[playerIndex];
-    gameState.auction.active = true;
-    gameState.auction.currentPlayer = player;
-    gameState.auction.currentBid = player.precio;
-    gameState.auction.currentBidder = null;
-    gameState.auction.turn = 0;
-    gameState.auction.passed = new Set();
+    gameState.auction = {
+        active: true,
+        currentPlayer: player,
+        currentBid: Math.round(player.precio),
+        currentBidder: null,
+        turn: 0,
+        participants: gameState.auction.participants,
+        passed: new Set()
+    };
     
-    // Mostrar panel de subasta
-    if (elements.auctionPanel) {
-        elements.auctionPanel.style.display = 'block';
-    }
+    if (elements.auctionPanel) elements.auctionPanel.style.display = 'block';
     updateAuctionDisplay();
+    updateAuctionStatus(`💰 Subasta por ${player.posicion} - Precio base: €${Math.round(player.precio)}M`);
     
-    updateAuctionStatus(`💰 Subasta iniciada por ${player.posicion} - Precio base: €${player.precio}M`);
+    if (elements.biddingHistory) elements.biddingHistory.innerHTML = '';
     
-    // Limpiar historial de pujas anterior
-    if (elements.biddingHistory) {
-        elements.biddingHistory.innerHTML = '';
-    }
-    
-    // Comenzar el turno
     processTurn();
 }
 
-// Procesar turno de subasta
 function processTurn() {
     if (!gameState.auction.active) return;
     
@@ -254,15 +248,13 @@ function processTurn() {
     
     if (elements.currentTurn) {
         elements.currentTurn.textContent = getPlayerDisplayName(currentPlayer);
-        // Resaltar el turno actual
-        elements.currentTurn.style.backgroundColor = currentPlayer === 'human' ? '#28a745' : '#007bff';
-        elements.currentTurn.style.color = 'white';
-        elements.currentTurn.style.padding = '5px 10px';
-        elements.currentTurn.style.borderRadius = '5px';
-        elements.currentTurn.style.fontWeight = 'bold';
+        elements.currentTurn.style.cssText = `
+            background-color: ${currentPlayer === 'human' ? '#28a745' : '#007bff'};
+            color: white; padding: 5px 10px; border-radius: 5px; font-weight: bold;
+        `;
     }
     
-    updateAuctionStatus(`🎯 Es el turno de ${getPlayerDisplayName(currentPlayer)}`);
+    updateAuctionStatus(`🎯 Turno de ${getPlayerDisplayName(currentPlayer)}`);
     
     if (currentPlayer === 'human') {
         enableHumanControls();
@@ -271,7 +263,6 @@ function processTurn() {
     }
 }
 
-// Habilitar controles del jugador humano
 function enableHumanControls() {
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     const canBid = gameState.players.human.budget >= nextBid;
@@ -279,48 +270,30 @@ function enableHumanControls() {
     if (elements.bidBtn) {
         elements.bidBtn.disabled = !canBid;
         elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
-        
-        if (canBid) {
-            elements.bidBtn.style.opacity = '1';
-            elements.bidBtn.style.cursor = 'pointer';
-        } else {
-            elements.bidBtn.style.opacity = '0.5';
-            elements.bidBtn.style.cursor = 'not-allowed';
-            updateAuctionStatus(`❌ Presupuesto insuficiente para pujar €${nextBid}M`);
-        }
+        elements.bidBtn.style.opacity = canBid ? '1' : '0.5';
     }
     
     if (elements.passBtn) {
         elements.passBtn.disabled = false;
         elements.passBtn.style.opacity = '1';
-        elements.passBtn.style.cursor = 'pointer';
-    }
-    
-    // Verificar si es obligatorio pujar
-    const remainingPlayers = gameState.currentPlayers.filter(p => !p.assigned);
-    const remainingParticipants = gameState.auction.participants.filter(p => !gameState.auction.passed.has(p));
-    
-    if (remainingPlayers.length >= remainingParticipants.length && remainingParticipants.length <= 2) {
-        if (elements.passBtn) {
-            elements.passBtn.disabled = true;
-            elements.passBtn.style.opacity = '0.5';
-            elements.passBtn.style.cursor = 'not-allowed';
-        }
-        updateAuctionStatus("⚠️ No puedes pasar, debes quedarte con un jugador.");
     }
 }
 
-// Procesar turno de IA
 function processAITurn(aiPlayer) {
     const player = gameState.auction.currentPlayer;
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     const aiBudget = gameState.players[aiPlayer].budget;
     
-    const interest = calculateAIInterest(player, aiPlayer);
-    const maxBid = Math.min(aiBudget, player.precio * interest);
+    // Lógica mejorada de IA
+    const baseInterest = player.precio >= 60 ? 0.7 : 0.5;
+    const randomFactor = Math.random();
+    const budgetFactor = aiBudget > 100 ? 1.2 : 0.8;
+    const interest = Math.min(0.9, baseInterest * budgetFactor);
     
-    if (nextBid <= maxBid && Math.random() < interest) {
-        // IA decide pujar
+    const maxAffordable = Math.min(aiBudget, player.precio * 1.5);
+    
+    if (nextBid <= maxAffordable && randomFactor < interest) {
+        // IA puja
         gameState.auction.currentBid = nextBid;
         gameState.auction.currentBidder = aiPlayer;
         gameState.players[aiPlayer].budget -= BID_INCREMENT;
@@ -341,56 +314,30 @@ function processAITurn(aiPlayer) {
     }
 }
 
-// Calcular interés de IA en jugador
-function calculateAIInterest(player, aiPlayer) {
-    let baseInterest = 0.6;
-    
-    if (player.precio >= 80) baseInterest = 0.8;
-    else if (player.precio >= 60) baseInterest = 0.7;
-    else if (player.precio >= 40) baseInterest = 0.6;
-    else baseInterest = 0.4;
-    
-    const variation = (Math.random() - 0.5) * 0.3;
-    return Math.max(0.2, Math.min(0.9, baseInterest + variation));
-}
-
-// Jugador humano puja
 function makeBid() {
-    if (!gameState.auction.active) return;
-    
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
-    const humanBudget = gameState.players.human.budget;
     
-    if (humanBudget >= nextBid) {
+    if (gameState.players.human.budget >= nextBid) {
         gameState.auction.currentBid = nextBid;
         gameState.auction.currentBidder = 'human';
-        gameState.players.human.budget = humanBudget - BID_INCREMENT;
+        gameState.players.human.budget -= BID_INCREMENT;
         
         addBiddingAction(`TÚ pujas €${nextBid}M`, 'human');
         updateBudgetDisplay();
         updateAuctionDisplay();
         
-        // Deshabilitar controles
-        if (elements.bidBtn) {
-            elements.bidBtn.disabled = true;
-            elements.bidBtn.style.opacity = '0.5';
-        }
-        if (elements.passBtn) {
-            elements.passBtn.disabled = true;
-            elements.passBtn.style.opacity = '0.5';
-        }
+        if (elements.bidBtn) elements.bidBtn.disabled = true;
+        if (elements.passBtn) elements.passBtn.disabled = true;
         
         gameState.auction.turn++;
         setTimeout(() => processTurn(), 1000);
     }
 }
 
-// Jugador humano pasa
 function passTurn() {
     gameState.auction.passed.add('human');
     addBiddingAction(`TÚ pasas`, 'human');
     
-    // Deshabilitar controles
     if (elements.bidBtn) elements.bidBtn.disabled = true;
     if (elements.passBtn) elements.passBtn.disabled = true;
     
@@ -398,29 +345,31 @@ function passTurn() {
     setTimeout(() => processTurn(), 1000);
 }
 
-// Finalizar subasta
 function endAuction() {
     const winner = gameState.auction.currentBidder;
     const player = gameState.auction.currentPlayer;
     const finalPrice = gameState.auction.currentBid;
     
     if (winner) {
-        updateAuctionStatus(`🎉 ${getPlayerDisplayName(winner)} gana la puja por €${finalPrice}M`);
+        updateAuctionStatus(`🎉 ${getPlayerDisplayName(winner)} gana por €${finalPrice}M`);
         
         player.assigned = true;
         player.winner = winner;
         player.finalPrice = finalPrice;
         
-        gameState.auction.participants = gameState.auction.participants.filter(p => p !== winner);
+        // Remover ganador de participantes futuros si ya tiene suficientes jugadores
+        const winnerSquadSize = gameState.players[winner].squad.length;
+        if (winnerSquadSize >= gameState.totalPlayersNeeded - 1) {
+            gameState.auction.participants = gameState.auction.participants.filter(p => p !== winner);
+        }
         
         showPlayerReveal(player, winner, finalPrice);
     } else {
-        updateAuctionStatus(`😔 Nadie quiso al jugador. Siguiente subasta...`);
+        updateAuctionStatus(`😔 Nadie quiso al jugador`);
         startNextAuction();
     }
 }
 
-// Mostrar revelación del jugador
 function showPlayerReveal(player, winner, price) {
     if (!elements.revealModal || !elements.countdown) {
         addPlayerToSquad(player, winner);
@@ -439,8 +388,8 @@ function showPlayerReveal(player, winner, price) {
             elements.countdown.textContent = countdown;
         } else {
             clearInterval(countdownInterval);
-            
             elements.countdown.textContent = '🎊';
+            
             const revealText = document.querySelector('.reveal-text');
             if (revealText) {
                 revealText.innerHTML = `
@@ -460,7 +409,6 @@ function showPlayerReveal(player, winner, price) {
     }, 1000);
 }
 
-// Agregar jugador a la plantilla
 function addPlayerToSquad(player, winner) {
     gameState.players[winner].squad.push(player);
     
@@ -471,71 +419,8 @@ function addPlayerToSquad(player, winner) {
     updateAuctionStatus(`✨ ${getPlayerDisplayName(winner)} fichó a ${player.nombre} por €${player.finalPrice}M`);
 }
 
-// Actualizar visualización de la formación
-function updateFormationDisplay() {
-    if (!elements.formation) return;
-    
-    const humanSquad = gameState.players.human.squad;
-    const positionSlots = {
-        porteros: elements.formation.querySelectorAll('[data-position="porteros"]'),
-        defensa: elements.formation.querySelectorAll('[data-position="defensa"]'),
-        laterales: elements.formation.querySelectorAll('[data-position="laterales"]'),
-        mediocentrodefensibo: elements.formation.querySelectorAll('[data-position="mediocentrodefensibo"]'),
-        mediocentros: elements.formation.querySelectorAll('[data-position="mediocentros"]'),
-        mediocentroofensibo: elements.formation.querySelectorAll('[data-position="mediocentroofensibo"]'),
-        extremoizquierdo: elements.formation.querySelectorAll('[data-position="extremoizquierdo"]'),
-        extremoderecho: elements.formation.querySelectorAll('[data-position="extremoderecho"]'),
-        delantero: elements.formation.querySelectorAll('[data-position="delantero"]')
-    };
-    
-    // Limpiar formación
-    Object.values(positionSlots).forEach(slots => {
-        slots.forEach(slot => {
-            slot.classList.remove('filled');
-            slot.textContent = slot.getAttribute('data-position').substring(0, 3).toUpperCase();
-        });
-    });
-    
-    // Llenar con jugadores
-    humanSquad.forEach(player => {
-        const position = getPlayerFormationPosition(player.posicion);
-        const slots = positionSlots[position];
-        
-        if (slots) {
-            const emptySlot = Array.from(slots).find(slot => !slot.classList.contains('filled'));
-            if (emptySlot) {
-                emptySlot.classList.add('filled');
-                const displayName = player.nombre.length > 10 ? player.nombre.split(' ')[0] : player.nombre.split(' ')[0];
-                emptySlot.textContent = displayName;
-                emptySlot.title = `${player.nombre} (€${player.finalPrice}M)`;
-            }
-        }
-    });
-}
-
-// Mapear posición del jugador a posición de formación
-function getPlayerFormationPosition(position) {
-    const positionMap = {
-        'POR': 'porteros',
-        'DFC': 'defensa',
-        'LI': 'laterales',
-        'LD': 'laterales',
-        'MCD': 'mediocentrodefensibo',
-        'MC': 'mediocentros',
-        'MCO': 'mediocentroofensibo',
-        'EI': 'extremoizquierdo',
-        'ED': 'extremoderecho',
-        'DC': 'delantero'
-    };
-    
-    return positionMap[position] || 'mediocentros';
-}
-
-// Iniciar siguiente subasta
 function startNextAuction() {
-    if (elements.auctionPanel) {
-        elements.auctionPanel.style.display = 'none';
-    }
+    if (elements.auctionPanel) elements.auctionPanel.style.display = 'none';
     
     const nextPlayerIndex = gameState.currentPlayers.findIndex(p => !p.assigned);
     
@@ -546,7 +431,6 @@ function startNextAuction() {
     }
 }
 
-// Verificar si la ronda está completa
 function checkRoundCompletion() {
     gameState.playersNeededInPosition--;
     
@@ -566,65 +450,52 @@ function checkRoundCompletion() {
     }
 }
 
-// Finalizar juego
 function endGame() {
-    updateAuctionStatus(`🏆 ¡JUEGO COMPLETADO! Tu plantilla está lista.`);
-    
     const humanSquad = gameState.players.human.squad;
     const totalSpent = INITIAL_BUDGET - gameState.players.human.budget;
     
-    setTimeout(() => {
-        updateAuctionStatus(`💰 Presupuesto gastado: €${totalSpent}M de €${INITIAL_BUDGET}M`);
-        updateAuctionStatus(`⚽ Jugadores fichados: ${humanSquad.length}/11`);
-    }, 1000);
-}
-
-// Actualizar visualización de presupuestos
-function updateBudgetDisplay() {
-    const humanBudget = document.getElementById('human-budget');
-    const ia1Budget = document.getElementById('ia1-budget');
-    const ia2Budget = document.getElementById('ia2-budget');
-    const ia3Budget = document.getElementById('ia3-budget');
+    updateAuctionStatus(`🏆 ¡JUEGO COMPLETADO! Plantilla finalizada.`);
     
-    if (humanBudget) humanBudget.textContent = `€${gameState.players.human.budget}M`;
-    if (ia1Budget) ia1Budget.textContent = `€${gameState.players.ia1.budget}M`;
-    if (ia2Budget) ia2Budget.textContent = `€${gameState.players.ia2.budget}M`;
-    if (ia3Budget) ia3Budget.textContent = `€${gameState.players.ia3.budget}M`;
+    // Mostrar estadísticas finales
+    setTimeout(() => {
+        const finalStats = `
+            💰 Gastaste: €${totalSpent}M de €${INITIAL_BUDGET}M<br>
+            ⚽ Fichaste: ${humanSquad.length} jugadores<br>
+            💎 Jugador más caro: ${humanSquad.reduce((max, p) => p.finalPrice > max.finalPrice ? p : max).nombre} (€${humanSquad.reduce((max, p) => p.finalPrice > max.finalPrice ? p : max).finalPrice}M)
+        `;
+        updateAuctionStatus(finalStats);
+        
+        // Mostrar botón para reiniciar
+        if (elements.startBtn) {
+            elements.startBtn.textContent = 'Jugar de Nuevo';
+            elements.startBtn.style.display = 'block';
+            elements.startBtn.onclick = () => location.reload();
+        }
+    }, 1500);
 }
 
-// Actualizar visualización de subasta - SIN BANDERAS
+// Funciones de interfaz
+function updateBudgetDisplay() {
+    ['human', 'ia1', 'ia2', 'ia3'].forEach(player => {
+        const budgetEl = document.getElementById(`${player}-budget`);
+        if (budgetEl) budgetEl.textContent = `€${gameState.players[player].budget}M`;
+    });
+}
+
 function updateAuctionDisplay() {
     const player = gameState.auction.currentPlayer;
+    const positionEl = document.getElementById('auction-position');
     
-    const auctionPosition = document.getElementById('auction-position');
-    
-    if (auctionPosition) auctionPosition.textContent = player.posicion;
+    if (positionEl) positionEl.textContent = player.posicion;
     if (elements.currentBid) elements.currentBid.textContent = `€${gameState.auction.currentBid}M`;
 }
 
-// Obtener nombre de jugador para mostrar
-function getPlayerDisplayName(player) {
-    const names = {
-        human: 'TÚ',
-        ia1: 'IA 1',
-        ia2: 'IA 2',
-        ia3: 'IA 3'
-    };
-    return names[player] || player;
-}
-
-// NUEVA FUNCIÓN: Actualizar estado de la subasta (más visible)
 function updateAuctionStatus(message) {
     if (elements.auctionStatus) {
         elements.auctionStatus.innerHTML = `
             <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; 
-                        padding: 15px; 
-                        border-radius: 10px; 
-                        text-align: center; 
-                        font-weight: bold; 
-                        font-size: 16px; 
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        color: white; padding: 15px; border-radius: 10px; text-align: center; 
+                        font-weight: bold; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                         margin: 10px 0;">
                 ${message}
             </div>
@@ -632,85 +503,75 @@ function updateAuctionStatus(message) {
     }
 }
 
-// NUEVA FUNCIÓN: Agregar acción de puja al historial visual
 function addBiddingAction(action, player) {
     if (!elements.biddingHistory) return;
     
+    const colors = { human: '#28a745', ia1: '#007bff', ia2: '#fd7e14', ia3: '#6f42c1' };
+    
     const actionElement = document.createElement('div');
-    actionElement.className = 'bidding-action';
-    
-    const playerColors = {
-        human: '#28a745',
-        ia1: '#007bff',
-        ia2: '#fd7e14',
-        ia3: '#6f42c1'
-    };
-    
-    const color = playerColors[player] || '#6c757d';
-    
     actionElement.innerHTML = `
-        <div style="background-color: ${color}; 
-                    color: white; 
-                    padding: 8px 12px; 
-                    margin: 3px 0; 
-                    border-radius: 20px; 
-                    font-size: 14px; 
-                    font-weight: bold;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="background-color: ${colors[player] || '#6c757d'}; 
+                    color: white; padding: 8px 12px; margin: 3px 0; border-radius: 20px; 
+                    font-size: 14px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             ${action}
         </div>
     `;
     
     elements.biddingHistory.appendChild(actionElement);
     
-    // Mantener solo las últimas 8 acciones
+    // Mantener solo las últimas 6 acciones
     const actions = elements.biddingHistory.children;
-    if (actions.length > 8) {
+    if (actions.length > 6) {
         elements.biddingHistory.removeChild(actions[0]);
     }
     
-    // Scroll al último elemento
     elements.biddingHistory.scrollTop = elements.biddingHistory.scrollHeight;
 }
 
-// Crear datos de ejemplo para testing
-function createTestData() {
-    playersData.porteros = [
-        { nombre: 'Gianluigi Donnarumma', club: 'PSG', posicion: 'POR', precio: 60 },
-        { nombre: 'Thibaut Courtois', club: 'Real Madrid', posicion: 'POR', precio: 65 },
-        { nombre: 'Alisson Becker', club: 'Liverpool', posicion: 'POR', precio: 70 },
-        { nombre: 'Jan Oblak', club: 'Atlético Madrid', posicion: 'POR', precio: 75 },
-        { nombre: 'Marc-André ter Stegen', club: 'FC Barcelona', posicion: 'POR', precio: 55 }
-    ];
+function updateFormationDisplay() {
+    if (!elements.formation) return;
     
-    playersData.defensa = [
-        { nombre: 'Virgil van Dijk', club: 'Liverpool', posicion: 'DFC', precio: 80 },
-        { nombre: 'Ruben Dias', club: 'Manchester City', posicion: 'DFC', precio: 75 },
-        { nombre: 'Kalidou Koulibaly', club: 'Chelsea', posicion: 'DFC', precio: 65 },
-        { nombre: 'Marquinhos', club: 'PSG', posicion: 'DFC', precio: 70 },
-        { nombre: 'Alessandro Bastoni', club: 'Inter Milan', posicion: 'DFC', precio: 55 }
-    ];
+    const humanSquad = gameState.players.human.squad;
+    const positionSlots = {};
     
-    const positions = ['laterales', 'mediocentros', 'mediocentrodefensibo', 'mediocentroofensibo', 'extremoizquierdo', 'extremoderecho', 'delantero'];
-    positions.forEach(pos => {
-        if (playersData[pos].length === 0) {
-            playersData[pos] = [
-                { nombre: `Jugador ${pos} 1`, club: 'Club A', posicion: 'MC', precioTransferencia: 40 },
-                { nombre: `Jugador ${pos} 2`, club: 'Club B', posicion: 'MC', precioTransferencia: 45 },
-                { nombre: `Jugador ${pos} 3`, club: 'Club C', posicion: 'MC', precioTransferencia: 50 },
-            ];
+    // Obtener slots de posición
+    POSITIONS_ORDER.forEach(pos => {
+        positionSlots[pos.name] = elements.formation.querySelectorAll(`[data-position="${pos.name}"]`);
+    });
+    
+    // Limpiar formación
+    Object.values(positionSlots).forEach(slots => {
+        slots.forEach(slot => {
+            slot.classList.remove('filled');
+            slot.textContent = slot.getAttribute('data-position').substring(0, 3).toUpperCase();
+        });
+    });
+    
+    // Llenar con jugadores
+    humanSquad.forEach(player => {
+        const position = getPlayerFormationPosition(player.posicion);
+        const slots = positionSlots[position];
+        
+        if (slots) {
+            const emptySlot = Array.from(slots).find(slot => !slot.classList.contains('filled'));
+            if (emptySlot) {
+                emptySlot.classList.add('filled');
+                const displayName = player.nombre.split(' ')[0];
+                emptySlot.textContent = displayName;
+                emptySlot.title = `${player.nombre} (€${player.finalPrice}M)`;
+            }
         }
     });
 }
 
-// Verificar si necesitamos datos de prueba
-if (Object.values(playersData).every(arr => arr.length === 0)) {
-    console.log('Creando datos de prueba...');
-    createTestData();
+function getPlayerFormationPosition(position) {
+    const positionMap = {
+        'POR': 'porteros', 'DFC': 'defensa', 'LI': 'laterales', 'LD': 'laterales',
+        'MCD': 'mediocentrodefensibo', 'MC': 'mediocentros', 'MCO': 'mediocentroofensibo',
+        'EI': 'extremoizquierdo', 'ED': 'extremoderecho', 'DC': 'delantero'
+    };
+    return positionMap[position] || 'mediocentros';
 }
 
 // Inicializar cuando se carga la página
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM cargado, inicializando...');
-    initGame();
-});
+document.addEventListener('DOMContentLoaded', initGame);
