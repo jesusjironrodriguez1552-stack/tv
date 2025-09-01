@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ FútbolStream - Transmisión en Vivo</title>
+    <title>⚽ PeruvianGol - Transmisión en Vivo</title>
     <style>
         * {
             margin: 0;
@@ -43,7 +43,7 @@
         .logo {
             font-size: 2.5rem;
             font-weight: bold;
-            background: linear-gradient(45deg, #00ff88, #00ccff);
+            background: linear-gradient(45deg, #ff0000, #ffffff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
@@ -60,6 +60,16 @@
             max-width: 1200px;
             margin: 2rem auto;
             padding: 0 1rem;
+        }
+
+        /* Contenedor para anuncios */
+        .ad-container {
+            text-align: center;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
         }
 
         .video-section {
@@ -111,19 +121,19 @@
         .play-button {
             width: 100px;
             height: 100px;
-            background: linear-gradient(45deg, #00ff88, #00ccff);
+            background: linear-gradient(45deg, #ff0000, #ffffff);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 30px rgba(0,255,136,0.3);
+            box-shadow: 0 10px 30px rgba(255,0,0,0.3);
             transition: all 0.3s ease;
             animation: pulse 2s infinite;
         }
 
         .play-button:hover {
             transform: scale(1.1);
-            box-shadow: 0 15px 40px rgba(0,255,136,0.5);
+            box-shadow: 0 15px 40px rgba(255,0,0,0.5);
         }
 
         .play-icon {
@@ -136,14 +146,46 @@
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 10px 30px rgba(0,255,136,0.3); }
-            50% { box-shadow: 0 15px 40px rgba(0,255,136,0.6); }
-            100% { box-shadow: 0 10px 30px rgba(0,255,136,0.3); }
+            0% { box-shadow: 0 10px 30px rgba(255,0,0,0.3); }
+            50% { box-shadow: 0 15px 40px rgba(255,0,0,0.6); }
+            100% { box-shadow: 0 10px 30px rgba(255,0,0,0.3); }
+        }
+
+        .controls-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .games-button {
+            background: linear-gradient(45deg, #ff0000, #ff4444);
+            color: white;
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 5px 15px rgba(255,0,0,0.3);
+        }
+
+        .games-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255,0,0,0.5);
+            background: linear-gradient(45deg, #ff4444, #ff6666);
         }
 
         .match-info {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 1fr;
             gap: 1.5rem;
             margin-top: 2rem;
         }
@@ -163,7 +205,7 @@
         }
 
         .info-card h3 {
-            color: #00ff88;
+            color: #ff4444;
             margin-bottom: 1rem;
             font-size: 1.3rem;
         }
@@ -215,17 +257,23 @@
             margin-top: 3rem;
         }
 
+        /* Responsive Design */
         @media (max-width: 768px) {
             .container {
                 padding: 0 0.5rem;
+                margin: 1rem auto;
             }
             
             .video-container {
-                height: 300px;
+                height: 250px;
             }
             
             .logo {
                 font-size: 2rem;
+            }
+
+            .subtitle {
+                font-size: 1rem;
             }
             
             .play-button {
@@ -238,6 +286,69 @@
                 border-top-width: 14px;
                 border-bottom-width: 14px;
             }
+
+            .video-section {
+                padding: 1rem;
+            }
+
+            .controls-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .games-button {
+                text-align: center;
+                justify-content: center;
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+
+            .info-card {
+                padding: 1rem;
+            }
+
+            .stats {
+                font-size: 0.9rem;
+            }
+
+            .header {
+                padding: 0.8rem 0;
+            }
+
+            /* Anuncios móviles */
+            .ad-container {
+                margin: 0.5rem 0;
+                padding: 0.5rem;
+            }
+
+            /* Ocultar anuncios grandes en móvil */
+            .desktop-ad {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .video-container {
+                height: 200px;
+            }
+
+            .logo {
+                font-size: 1.8rem;
+            }
+
+            .container {
+                margin: 0.5rem auto;
+            }
+
+            .video-section {
+                margin-bottom: 1rem;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-ad {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -245,11 +356,31 @@
     <div class="background-pattern"></div>
     
     <header class="header">
-        <div class="logo">⚽ FútbolStream</div>
-        <div class="subtitle">Transmisión en Vivo - Alta Calidad</div>
+        <div class="logo">⚽ PeruvianGol</div>
+        <div class="subtitle">Transmisión en Vivo - Fútbol Peruano</div>
     </header>
 
     <div class="container">
+        <!-- Anuncio superior para desktop -->
+        <div class="ad-container desktop-ad">
+            <script type="text/javascript">
+                atOptions = {
+                    'key' : 'a6c29732eed562ce6c743af0a3b60273',
+                    'format' : 'iframe',
+                    'height' : 90,
+                    'width' : 728,
+                    'params' : {}
+                };
+            </script>
+            <script type="text/javascript" src="//www.highperformanceformat.com/a6c29732eed562ce6c743af0a3b60273/invoke.js"></script>
+        </div>
+
+        <!-- Anuncio superior para móvil -->
+        <div class="ad-container mobile-ad">
+            <script async="async" data-cfasync="false" src="//pl27458414.revenuecpmgate.com/2cab1d61c2dc9d7d47e9cefc513235df/invoke.js"></script>
+            <div id="container-2cab1d61c2dc9d7d47e9cefc513235df"></div>
+        </div>
+
         <div class="video-section">
             <div class="live-indicator">
                 <div class="live-dot"></div>
@@ -269,74 +400,60 @@
                     style="display: none;">
                 </iframe>
             </div>
+
+            <div class="controls-section">
+                <a href="juegos.html" class="games-button">
+                    🎮 Juegos
+                </a>
+            </div>
+        </div>
+
+        <!-- Anuncio entre contenido -->
+        <div class="ad-container">
+            <script async="async" data-cfasync="false" src="//pl27458414.revenuecpmgate.com/2cab1d61c2dc9d7d47e9cefc513235df/invoke.js"></script>
+            <div id="container-2cab1d61c2dc9d7d47e9cefc513235df"></div>
         </div>
 
         <div class="match-info">
             <div class="info-card">
-                <h3>📊 Estadísticas del Partido</h3>
-                <div class="stats">
-                    <span>Posesión</span>
-                    <span>55% - 45%</span>
-                </div>
-                <div class="stats">
-                    <span>Tiros a puerta</span>
-                    <span>7 - 4</span>
-                </div>
-                <div class="stats">
-                    <span>Corners</span>
-                    <span>6 - 3</span>
-                </div>
-                <div class="stats">
-                    <span>Faltas</span>
-                    <span>12 - 8</span>
-                </div>
-            </div>
-
-            <div class="info-card">
                 <h3>🏆 Información del Partido</h3>
                 <div class="stats">
                     <span>Competición</span>
-                    <span>Liga Premium</span>
+                    <span>Liga 1 Betsson</span>
                 </div>
                 <div class="stats">
                     <span>Estadio</span>
-                    <span>Estadio Central</span>
+                    <span>Estadio Nacional</span>
                 </div>
                 <div class="stats">
                     <span>Árbitro</span>
-                    <span>Juan Pérez</span>
+                    <span>Diego Haro</span>
                 </div>
                 <div class="stats">
                     <span>Tiempo</span>
                     <span id="matchTime">78' 2T</span>
                 </div>
             </div>
+        </div>
 
-            <div class="info-card">
-                <h3>📺 Calidad de Transmisión</h3>
-                <div class="stats">
-                    <span>Resolución</span>
-                    <span>HD 1080p</span>
-                </div>
-                <div class="stats">
-                    <span>FPS</span>
-                    <span>60 fps</span>
-                </div>
-                <div class="stats">
-                    <span>Bitrate</span>
-                    <span>4.5 Mbps</span>
-                </div>
-                <div class="stats">
-                    <span>Latencia</span>
-                    <span>< 2 segundos</span>
-                </div>
-            </div>
+        <!-- Anuncio inferior -->
+        <div class="ad-container desktop-ad">
+            <script type="text/javascript">
+                atOptions = {
+                    'key' : 'a6c29732eed562ce6c743af0a3b60273',
+                    'format' : 'iframe',
+                    'height' : 90,
+                    'width' : 728,
+                    'params' : {}
+                };
+            </script>
+            <script type="text/javascript" src="//www.highperformanceformat.com/a6c29732eed562ce6c743af0a3b60273/invoke.js"></script>
         </div>
     </div>
 
     <footer class="footer">
-        <p>© 2024 FútbolStream - La mejor experiencia de fútbol en vivo</p>
-        <p style="margin-top: 0.5rem; opacity: 0.7;">Disfruta del mejor fútbol con transmisión en alta definición</p>
+        <p>© 2024 PeruvianGol - La mejor experiencia del fútbol peruano en vivo</p>
+        <p style="margin-top: 0.5rem; opacity: 0.7;">Disfruta de la Liga 1 Betsson con transmisión en alta definición</p>
     </footer>
 
     <script>
@@ -377,7 +494,7 @@
             particle.style.position = 'fixed';
             particle.style.width = Math.random() * 6 + 2 + 'px';
             particle.style.height = particle.style.width;
-            particle.style.background = 'rgba(0, 255, 136, 0.3)';
+            particle.style.background = 'rgba(255, 68, 68, 0.3)';
             particle.style.borderRadius = '50%';
             particle.style.left = Math.random() * window.innerWidth + 'px';
             particle.style.top = '-10px';
