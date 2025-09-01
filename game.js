@@ -22,12 +22,13 @@ let gameState = {
     playersNeededInPosition: 0,
     totalPlayersNeeded: 11,
     players: {
-        human: { budget: INITIAL_BUDGET, squad: [] },
-        ia1: { budget: INITIAL_BUDGET, squad: [] },
-        ia2: { budget: INITIAL_BUDGET, squad: [] },
-        ia3: { budget: INITIAL_BUDGET, squad: [] }
+        human: { budget: INITIAL_BUDGET, squad: [], spent: 0 },
+        ia1: { budget: INITIAL_BUDGET, squad: [], spent: 0 },
+        ia2: { budget: INITIAL_BUDGET, squad: [], spent: 0 },
+        ia3: { budget: INITIAL_BUDGET, squad: [], spent: 0 }
     },
     currentPlayers: [],
+    currentPlayerIndex: 0,
     auction: {
         active: false,
         currentPlayer: null,
@@ -36,8 +37,7 @@ let gameState = {
         participants: ['human', 'ia1', 'ia2', 'ia3'],
         passed: new Set(),
         winningCountdown: null,
-        countdownActive: false,
-        lastBidTime: 0
+        countdownActive: false
     }
 };
 
@@ -49,7 +49,6 @@ const elements = {
     bidBtn: document.getElementById('bid-btn'),
     passBtn: document.getElementById('pass-btn'),
     currentBid: document.getElementById('current-bid'),
-    currentTurn: document.getElementById('current-turn'),
     roundTitle: document.getElementById('round-title'),
     roundSubtitle: document.getElementById('round-subtitle'),
     revealModal: document.getElementById('reveal-modal'),
@@ -100,39 +99,8 @@ const getPlayerDisplayName = (player) => ({
     human: 'TÚ', ia1: 'IA 1', ia2: 'IA 2', ia3: 'IA 3'
 }[player] || player);
 
-// Funciones de cuenta atrás
-function startWinningCountdown(bidder, bid) {
-    gameState.auction.countdownActive = true;
-    gameState.auction.lastBidTime = Date.now();
-    
-    let seconds = 3;
-    updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds} segundos...`);
-    
-    gameState.auction.winningCountdown = setInterval(() => {
-        seconds--;
-        if (seconds > 0) {
-            updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds} segundos...`);
-        } else {
-            clearInterval(gameState.auction.winningCountdown);
-            gameState.auction.countdownActive = false;
-            endAuction();
-        }
-    }, 1000);
-}
-
-function stopWinningCountdown() {
-    if (gameState.auction.winningCountdown) {
-        clearInterval(gameState.auction.winningCountdown);
-        gameState.auction.winningCountdown = null;
-        gameState.auction.countdownActive = false;
-    }
-}
-
 // Inicialización
 function initGame() {
-    console.log('Inicializando juego...');
-    
-    // Crear datos de prueba si no existen
     if (Object.values(playersData).every(arr => arr.length === 0)) {
         createTestData();
     }
@@ -166,7 +134,6 @@ function createTestData() {
         ]
     };
     
-    // Llenar todas las posiciones con datos de prueba
     Object.keys(playersData).forEach(pos => {
         if (playersData[pos].length === 0) {
             playersData[pos] = testPlayers[pos] || Array.from({length: 5}, (_, i) => ({
@@ -183,6 +150,7 @@ function startGame() {
     elements.startBtn.style.display = 'none';
     gameState.currentRound = 1;
     gameState.currentPosition = 0;
+    gameState.currentPlayerIndex = 0;
     gameState.playersNeededInPosition = POSITIONS_ORDER[0].count;
     startNewRound();
 }
@@ -193,17 +161,11 @@ function startNewRound() {
     elements.roundTitle.textContent = `Ronda ${gameState.currentRound}: ${position.display}`;
     elements.roundSubtitle.textContent = `Selecciona ${position.count} ${position.display.toLowerCase()}`;
     
-    updateAuctionStatus(`🏆 Nueva ronda - Buscando ${position.display}...`);
-    
     gameState.currentPlayers = selectRandomPlayers(position.name);
     displayPlayers();
+    gameState.currentPlayerIndex = 0;
     
-    gameState.auction.participants = ['human', 'ia1', 'ia2', 'ia3'];
-    gameState.auction.passed = new Set();
-    
-    if (elements.biddingHistory) elements.biddingHistory.innerHTML = '';
-    
-    setTimeout(() => startPlayerAuction(0), 1000);
+    setTimeout(() => startPlayerAuction(), 1000);
 }
 
 function selectRandomPlayers(position) {
@@ -237,24 +199,23 @@ function displayPlayers() {
     });
 }
 
-// Sistema de subastas mejorado
-function startPlayerAuction(playerIndex) {
-    if (playerIndex >= gameState.currentPlayers.length) {
+// Sistema de subastas simplificado
+function startPlayerAuction() {
+    if (gameState.currentPlayerIndex >= gameState.currentPlayers.length) {
         checkRoundCompletion();
         return;
     }
     
-    const player = gameState.currentPlayers[playerIndex];
+    const player = gameState.currentPlayers[gameState.currentPlayerIndex];
     gameState.auction = {
         active: true,
         currentPlayer: player,
         currentBid: Math.round(player.precio),
         currentBidder: null,
-        participants: gameState.auction.participants.filter(p => !gameState.auction.passed.has(p)),
+        participants: ['human', 'ia1', 'ia2', 'ia3'],
         passed: new Set(),
         winningCountdown: null,
-        countdownActive: false,
-        lastBidTime: 0
+        countdownActive: false
     };
     
     if (elements.auctionPanel) elements.auctionPanel.style.display = 'block';
@@ -263,101 +224,67 @@ function startPlayerAuction(playerIndex) {
     
     if (elements.biddingHistory) elements.biddingHistory.innerHTML = '';
     
-    // Activar controles del humano desde el inicio
     enableHumanControls();
-    
-    // Empezar el proceso de subastas con turnos aleatorios de IA
-    setTimeout(() => processRandomAITurns(), 2000);
+    processAIActions();
 }
 
-function processRandomAITurns() {
+function processAIActions() {
     if (!gameState.auction.active || gameState.auction.countdownActive) return;
     
     const activeAIs = gameState.auction.participants.filter(p => 
         p !== 'human' && !gameState.auction.passed.has(p)
     );
     
+    if (activeAIs.length === 0 && !gameState.auction.passed.has('human')) {
+        return; // Solo el humano queda
+    }
+    
     if (activeAIs.length === 0) {
-        // Solo queda el humano, terminar subasta
         endAuction();
         return;
     }
     
-    // Decidir si alguna IA va a pujar (probabilidad basada en el valor del jugador)
-    const shouldBid = Math.random() < 0.6; // 60% de probabilidad
+    // Decidir si una IA va a pujar
+    const shouldBid = Math.random() < 0.6;
     
     if (shouldBid) {
-        // Seleccionar una IA aleatoria
         const randomAI = activeAIs[Math.floor(Math.random() * activeAIs.length)];
-        setTimeout(() => processAIBid(randomAI), 1000 + Math.random() * 2000); // 1-3 segundos
+        setTimeout(() => makeAIBid(randomAI), 1000 + Math.random() * 2000);
     } else {
-        // Si nadie puja, esperar un poco y volver a intentar
-        setTimeout(() => processRandomAITurns(), 2000 + Math.random() * 3000); // 2-5 segundos
+        setTimeout(() => processAIActions(), 2000);
     }
 }
 
-function processAIBid(aiPlayer) {
+function makeAIBid(aiPlayer) {
     if (!gameState.auction.active || gameState.auction.countdownActive) return;
     
     const player = gameState.auction.currentPlayer;
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     const aiBudget = gameState.players[aiPlayer].budget;
     
-    // Lógica mejorada de IA
     const baseInterest = player.precio >= 60 ? 0.7 : 0.5;
-    const randomFactor = Math.random();
     const budgetFactor = aiBudget > 100 ? 1.2 : 0.8;
     const interest = Math.min(0.9, baseInterest * budgetFactor);
-    
     const maxAffordable = Math.min(aiBudget, player.precio * 1.5);
     
-    if (nextBid <= maxAffordable && randomFactor < interest) {
-        // IA puja
-        stopWinningCountdown(); // Detener cualquier cuenta atrás previa
+    if (nextBid <= maxAffordable && Math.random() < interest) {
+        stopWinningCountdown();
         
         gameState.auction.currentBid = nextBid;
         gameState.auction.currentBidder = aiPlayer;
-        gameState.players[aiPlayer].budget -= BID_INCREMENT;
         
         addBiddingAction(`${getPlayerDisplayName(aiPlayer)} puja €${nextBid}M`, aiPlayer);
-        updateBudgetDisplay();
         updateAuctionDisplay();
-        updateHumanControls(); // Actualizar controles del humano
+        updateHumanControls();
         
-        // Iniciar cuenta atrás de 3 segundos
         startWinningCountdown(aiPlayer, nextBid);
-        
-        // Programar próximas pujas de IA (si la cuenta atrás no termina)
-        setTimeout(() => processRandomAITurns(), 1000);
+        setTimeout(() => processAIActions(), 1000);
         
     } else {
-        // IA pasa
         gameState.auction.passed.add(aiPlayer);
         addBiddingAction(`${getPlayerDisplayName(aiPlayer)} pasa`, aiPlayer);
-        
-        // Continuar con otras IAs
-        setTimeout(() => processRandomAITurns(), 1000);
+        setTimeout(() => processAIActions(), 1000);
     }
-}
-
-function enableHumanControls() {
-    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
-    const canBid = gameState.players.human.budget >= nextBid;
-    
-    if (elements.bidBtn) {
-        elements.bidBtn.disabled = !canBid;
-        elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
-        elements.bidBtn.style.opacity = canBid ? '1' : '0.5';
-    }
-    
-    if (elements.passBtn) {
-        elements.passBtn.disabled = false;
-        elements.passBtn.style.opacity = '1';
-    }
-}
-
-function updateHumanControls() {
-    enableHumanControls();
 }
 
 function makeBid() {
@@ -366,22 +293,17 @@ function makeBid() {
     const nextBid = gameState.auction.currentBid + BID_INCREMENT;
     
     if (gameState.players.human.budget >= nextBid) {
-        stopWinningCountdown(); // Detener cuenta atrás previa
+        stopWinningCountdown();
         
         gameState.auction.currentBid = nextBid;
         gameState.auction.currentBidder = 'human';
-        gameState.players.human.budget -= BID_INCREMENT;
         
         addBiddingAction(`TÚ pujas €${nextBid}M`, 'human');
-        updateBudgetDisplay();
         updateAuctionDisplay();
         updateHumanControls();
         
-        // Iniciar cuenta atrás de 3 segundos
         startWinningCountdown('human', nextBid);
-        
-        // Las IAs pueden seguir pujando
-        setTimeout(() => processRandomAITurns(), 1000);
+        setTimeout(() => processAIActions(), 1000);
     }
 }
 
@@ -392,7 +314,6 @@ function passTurn() {
     if (elements.bidBtn) elements.bidBtn.disabled = true;
     if (elements.passBtn) elements.passBtn.disabled = true;
     
-    // Verificar si solo quedan IAs activas
     const activeParticipants = gameState.auction.participants.filter(p => 
         !gameState.auction.passed.has(p)
     );
@@ -400,8 +321,33 @@ function passTurn() {
     if (activeParticipants.length <= 1) {
         endAuction();
     } else {
-        // Continuar con IAs
-        setTimeout(() => processRandomAITurns(), 1000);
+        setTimeout(() => processAIActions(), 1000);
+    }
+}
+
+function startWinningCountdown(bidder, bid) {
+    gameState.auction.countdownActive = true;
+    
+    let seconds = 3;
+    updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds} segundos...`);
+    
+    gameState.auction.winningCountdown = setInterval(() => {
+        seconds--;
+        if (seconds > 0) {
+            updateAuctionStatus(`⏰ ${getPlayerDisplayName(bidder)} ganando con €${bid}M - ${seconds} segundos...`);
+        } else {
+            clearInterval(gameState.auction.winningCountdown);
+            gameState.auction.countdownActive = false;
+            endAuction();
+        }
+    }, 1000);
+}
+
+function stopWinningCountdown() {
+    if (gameState.auction.winningCountdown) {
+        clearInterval(gameState.auction.winningCountdown);
+        gameState.auction.winningCountdown = null;
+        gameState.auction.countdownActive = false;
     }
 }
 
@@ -414,32 +360,30 @@ function endAuction() {
     const finalPrice = gameState.auction.currentBid;
     
     if (winner) {
-        updateAuctionStatus(`🎉 ${getPlayerDisplayName(winner)} gana por €${finalPrice}M`);
+        // Actualizar presupuesto y gasto del ganador
+        gameState.players[winner].budget -= finalPrice;
+        gameState.players[winner].spent += finalPrice;
+        
+        updateAuctionStatus(`🎉 ${getPlayerDisplayName(winner)} compra por €${finalPrice}M`);
         
         player.assigned = true;
         player.winner = winner;
         player.finalPrice = finalPrice;
         
-        // Añadir jugador al equipo ganador
         gameState.players[winner].squad.push(player);
         
-        // Remover ganador de participantes futuros si ya tiene suficientes jugadores
-        const winnerSquadSize = gameState.players[winner].squad.length;
-        if (winnerSquadSize >= gameState.totalPlayersNeeded - 1) {
-            gameState.auction.participants = gameState.auction.participants.filter(p => p !== winner);
-        }
-        
         showPlayerReveal(player, winner, finalPrice);
+        updateBudgetDisplay();
     } else {
-        updateAuctionStatus(`😔 Nadie quiso al jugador`);
-        startNextAuction();
+        updateAuctionStatus(`😔 Nadie compró el jugador`);
+        continueToNextPlayer();
     }
 }
 
 function showPlayerReveal(player, winner, price) {
     if (!elements.revealModal || !elements.countdown) {
         updateFormationDisplay();
-        startNextAuction();
+        continueToNextPlayer();
         return;
     }
     
@@ -469,21 +413,21 @@ function showPlayerReveal(player, winner, price) {
             
             setTimeout(() => {
                 elements.revealModal.style.display = 'none';
-                startNextAuction();
-            }, 3000);
+                continueToNextPlayer();
+            }, 2000);
         }
     }, 1000);
 }
 
-function startNextAuction() {
+function continueToNextPlayer() {
     if (elements.auctionPanel) elements.auctionPanel.style.display = 'none';
     
-    const nextPlayerIndex = gameState.currentPlayers.findIndex(p => !p.assigned);
+    gameState.currentPlayerIndex++;
     
-    if (nextPlayerIndex !== -1) {
-        setTimeout(() => startPlayerAuction(nextPlayerIndex), 1000);
-    } else {
+    if (gameState.currentPlayerIndex >= gameState.currentPlayers.length) {
         checkRoundCompletion();
+    } else {
+        setTimeout(() => startPlayerAuction(), 1000);
     }
 }
 
@@ -508,20 +452,17 @@ function checkRoundCompletion() {
 
 function endGame() {
     const humanSquad = gameState.players.human.squad;
-    const totalSpent = INITIAL_BUDGET - gameState.players.human.budget;
     
     updateAuctionStatus(`🏆 ¡JUEGO COMPLETADO! Plantilla finalizada.`);
     
-    // Mostrar estadísticas finales
     setTimeout(() => {
         const finalStats = `
-            💰 Gastaste: €${totalSpent}M de €${INITIAL_BUDGET}M<br>
+            💰 Gastaste: €${gameState.players.human.spent}M<br>
             ⚽ Fichaste: ${humanSquad.length} jugadores<br>
-            💎 Jugador más caro: ${humanSquad.length > 0 ? humanSquad.reduce((max, p) => p.finalPrice > max.finalPrice ? p : max).nombre : 'Ninguno'} ${humanSquad.length > 0 ? '(€' + humanSquad.reduce((max, p) => p.finalPrice > max.finalPrice ? p : max).finalPrice + 'M)' : ''}
+            💎 Mejor fichaje: ${humanSquad.length > 0 ? humanSquad.reduce((max, p) => p.finalPrice > max.finalPrice ? p : max).nombre : 'Ninguno'}
         `;
         updateAuctionStatus(finalStats);
         
-        // Mostrar botón para reiniciar
         if (elements.startBtn) {
             elements.startBtn.textContent = 'Jugar de Nuevo';
             elements.startBtn.style.display = 'block';
@@ -530,11 +471,33 @@ function endGame() {
     }, 1500);
 }
 
+function enableHumanControls() {
+    const nextBid = gameState.auction.currentBid + BID_INCREMENT;
+    const canBid = gameState.players.human.budget >= nextBid;
+    
+    if (elements.bidBtn) {
+        elements.bidBtn.disabled = !canBid;
+        elements.bidBtn.textContent = `Pujar (€${nextBid}M)`;
+        elements.bidBtn.style.opacity = canBid ? '1' : '0.5';
+    }
+    
+    if (elements.passBtn) {
+        elements.passBtn.disabled = false;
+        elements.passBtn.style.opacity = '1';
+    }
+}
+
+function updateHumanControls() {
+    enableHumanControls();
+}
+
 // Funciones de interfaz
 function updateBudgetDisplay() {
     ['human', 'ia1', 'ia2', 'ia3'].forEach(player => {
         const budgetEl = document.getElementById(`${player}-budget`);
-        if (budgetEl) budgetEl.textContent = `€${gameState.players[player].budget}M`;
+        if (budgetEl) {
+            budgetEl.innerHTML = `€${gameState.players[player].budget}M<br><small>Gastado: €${gameState.players[player].spent}M</small>`;
+        }
     });
 }
 
@@ -575,7 +538,6 @@ function addBiddingAction(action, player) {
     
     elements.biddingHistory.appendChild(actionElement);
     
-    // Mantener solo las últimas 6 acciones
     const actions = elements.biddingHistory.children;
     if (actions.length > 6) {
         elements.biddingHistory.removeChild(actions[0]);
@@ -590,12 +552,10 @@ function updateFormationDisplay() {
     const humanSquad = gameState.players.human.squad;
     const positionSlots = {};
     
-    // Obtener slots de posición
     POSITIONS_ORDER.forEach(pos => {
         positionSlots[pos.name] = elements.formation.querySelectorAll(`[data-position="${pos.name}"]`);
     });
     
-    // Limpiar formación
     Object.values(positionSlots).forEach(slots => {
         slots.forEach(slot => {
             slot.classList.remove('filled');
@@ -603,7 +563,6 @@ function updateFormationDisplay() {
         });
     });
     
-    // Llenar con jugadores
     humanSquad.forEach(player => {
         const position = getPlayerFormationPosition(player.posicion);
         const slots = positionSlots[position];
