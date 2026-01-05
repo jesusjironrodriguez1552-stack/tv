@@ -1,6 +1,6 @@
 // CONFIGURACIÓN SUPABASE
-const SUPABASE_URL = 'TU_URL_AQUÍ';
-const SUPABASE_KEY = 'TU_KEY_AQUÍ';
+const SUPABASE_URL = 'https://mdetlqvfdgtfatufdkht.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_TV9x9pfZw_vYR3-lF7NCIQ_ybSLs5Fh';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const selectMadres = document.getElementById('cuenta_madre_id');
