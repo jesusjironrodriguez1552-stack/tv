@@ -3,526 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚽ PeruvianGol - Transmisión en Vivo</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            color: white;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        .background-pattern {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 2px, transparent 2px),
-                radial-gradient(circle at 75% 75%, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: -1;
-        }
-
-        .header {
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            padding: 1rem 0;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-
-        .logo {
-            font-size: 2.5rem;
-            font-weight: bold;
-            background: linear-gradient(45deg, #ff0000, #ffffff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            color: #e0e0e0;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        /* Contenedor para anuncios */
-        .ad-container {
-            text-align: center;
-            margin: 1rem 0;
-            padding: 1rem;
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
-        }
-
-        .video-section {
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .video-container {
-            position: relative;
-            width: 100%;
-            height: 500px;
-            background: #000;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-        }
-
-        #videoPlayer {
-            width: 100%;
-            height: 100%;
-            border: none;
-            border-radius: 15px;
-        }
-
-        .play-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(30,60,114,0.9), rgba(42,82,152,0.9));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-radius: 15px;
-        }
-
-        .play-overlay:hover {
-            background: linear-gradient(135deg, rgba(30,60,114,0.7), rgba(42,82,152,0.7));
-        }
-
-        .play-button {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(45deg, #ff0000, #ffffff);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 30px rgba(255,0,0,0.3);
-            transition: all 0.3s ease;
-            animation: pulse 2s infinite;
-        }
-
-        .play-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 15px 40px rgba(255,0,0,0.5);
-        }
-
-        .play-icon {
-            width: 0;
-            height: 0;
-            border-left: 30px solid #1e3c72;
-            border-top: 18px solid transparent;
-            border-bottom: 18px solid transparent;
-            margin-left: 8px;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 10px 30px rgba(255,0,0,0.3); }
-            50% { box-shadow: 0 15px 40px rgba(255,0,0,0.6); }
-            100% { box-shadow: 0 10px 30px rgba(255,0,0,0.3); }
-        }
-
-        .controls-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 2rem;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .games-button {
-            background: linear-gradient(45deg, #ff0000, #ff4444);
-            color: white;
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 25px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 5px 15px rgba(255,0,0,0.3);
-        }
-
-        .games-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(255,0,0,0.5);
-            background: linear-gradient(45deg, #ff4444, #ff6666);
-        }
-
-        .match-info {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .info-card {
-            background: rgba(0,0,0,0.3);
-            border-radius: 15px;
-            padding: 1.5rem;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-        }
-
-        .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-
-        .info-card h3 {
-            color: #ff4444;
-            margin-bottom: 1rem;
-            font-size: 1.3rem;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 0.5rem 0;
-        }
-
-        .live-indicator {
-            display: inline-flex;
-            align-items: center;
-            background: #ff4444;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            font-weight: bold;
-            margin: 1rem 0;
-            animation: blink 2s infinite;
-        }
-
-        .live-dot {
-            width: 8px;
-            height: 8px;
-            background: white;
-            border-radius: 50%;
-            margin-right: 0.5rem;
-            animation: pulse-dot 1s infinite;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.7; }
-        }
-
-        @keyframes pulse-dot {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(0,0,0,0.3);
-            margin-top: 3rem;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .container {
-                padding: 0 0.5rem;
-                margin: 1rem auto;
-            }
-            
-            .video-container {
-                height: 250px;
-            }
-            
-            .logo {
-                font-size: 2rem;
-            }
-
-            .subtitle {
-                font-size: 1rem;
-            }
-            
-            .play-button {
-                width: 80px;
-                height: 80px;
-            }
-            
-            .play-icon {
-                border-left-width: 24px;
-                border-top-width: 14px;
-                border-bottom-width: 14px;
-            }
-
-            .video-section {
-                padding: 1rem;
-            }
-
-            .controls-section {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .games-button {
-                text-align: center;
-                justify-content: center;
-                padding: 0.8rem 1.5rem;
-                font-size: 1rem;
-            }
-
-            .info-card {
-                padding: 1rem;
-            }
-
-            .stats {
-                font-size: 0.9rem;
-            }
-
-            .header {
-                padding: 0.8rem 0;
-            }
-
-            /* Anuncios móviles */
-            .ad-container {
-                margin: 0.5rem 0;
-                padding: 0.5rem;
-            }
-
-            /* Ocultar anuncios grandes en móvil */
-            .desktop-ad {
-                display: none;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .video-container {
-                height: 200px;
-            }
-
-            .logo {
-                font-size: 1.8rem;
-            }
-
-            .container {
-                margin: 0.5rem auto;
-            }
-
-            .video-section {
-                margin-bottom: 1rem;
-            }
-        }
-
-        @media (min-width: 769px) {
-            .mobile-ad {
-                display: none;
-            }
-        }
-    </style>
+    <title>Admin Cuentas Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
-    <div class="background-pattern"></div>
-    
-    <header class="header">
-        <div class="logo">⚽ PeruvianGol</div>
-        <div class="subtitle">Transmisión en Vivo - Fútbol Peruano</div>
-    </header>
+<body class="bg-gray-900 text-white p-4">
 
-    <div class="container">
-        <!-- Anuncio superior para desktop -->
-        <div class="ad-container desktop-ad">
-            <script type="text/javascript">
-                atOptions = {
-                    'key' : 'a6c29732eed562ce6c743af0a3b60273',
-                    'format' : 'iframe',
-                    'height' : 90,
-                    'width' : 728,
-                    'params' : {}
-                };
-            </script>
-            <script type="text/javascript" src="//www.highperformanceformat.com/a6c29732eed562ce6c743af0a3b60273/invoke.js"></script>
-        </div>
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+            <h1 class="text-2xl font-bold text-blue-400">AdminCuentas <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">V2</span></h1>
+            <div id="balance" class="text-green-400 font-mono text-lg">Caja: $0.00</div>
+        </header>
 
-        <!-- Anuncio superior para móvil -->
-        <div class="ad-container mobile-ad">
-            <script async="async" data-cfasync="false" src="//pl27458414.revenuecpmgate.com/2cab1d61c2dc9d7d47e9cefc513235df/invoke.js"></script>
-            <div id="container-2cab1d61c2dc9d7d47e9cefc513235df"></div>
-        </div>
-
-        <div class="video-section">
-            <div class="live-indicator">
-                <div class="live-dot"></div>
-                EN VIVO
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <div class="video-container">
-                <div class="play-overlay" id="playOverlay">
-                    <div class="play-button">
-                        <div class="play-icon"></div>
+            <section class="bg-gray-800 p-6 rounded-lg shadow-xl">
+                <h2 class="text-xl mb-4 font-semibold border-b border-gray-600 pb-2">Nuevo Perfil/Venta</h2>
+                <form id="perfilForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400">Cliente</label>
+                        <input type="text" id="nombre_cliente" class="w-full bg-gray-700 border-none rounded p-2 focus:ring-2 focus:ring-blue-500" required>
                     </div>
-                </div>
-                <iframe 
-                    id="videoPlayer" 
-                    src="" 
-                    allowfullscreen
-                    style="display: none;">
-                </iframe>
-            </div>
+                    <div>
+                        <label class="block text-sm text-gray-400">WhatsApp</label>
+                        <input type="text" id="whatsapp" class="w-full bg-gray-700 border-none rounded p-2" placeholder="+51...">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400">Asignar a Cuenta Madre (ID)</label>
+                        <input type="text" id="cuenta_madre_id" class="w-full bg-gray-700 border-none rounded p-2" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm text-gray-400">Vence (Cliente)</label>
+                            <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 border-none rounded p-2 text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400">Monto ($)</label>
+                            <input type="number" id="monto" class="w-full bg-gray-700 border-none rounded p-2" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">Guardar Venta</button>
+                </form>
+            </section>
 
-            <div class="controls-section">
-                <a href="manager.html" class="games-button">
-                    🎮 Juegos
-                </a>
-            </div>
-        </div>
+            <section class="md:col-span-2 bg-gray-800 p-6 rounded-lg shadow-xl overflow-x-auto">
+                <h2 class="text-xl mb-4 font-semibold border-b border-gray-600 pb-2">Gestión de Perfiles (Sobreventa)</h2>
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="p-2">Cliente</th>
+                            <th class="p-2">Cuenta Madre</th>
+                            <th class="p-2">Vencimiento</th>
+                            <th class="p-2">Estado</th>
+                            <th class="p-2">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaPerfiles">
+                        </tbody>
+                </table>
+            </section>
 
-        <!-- Anuncio entre contenido -->
-        <div class="ad-container">
-            <script async="async" data-cfasync="false" src="//pl27458414.revenuecpmgate.com/2cab1d61c2dc9d7d47e9cefc513235df/invoke.js"></script>
-            <div id="container-2cab1d61c2dc9d7d47e9cefc513235df"></div>
-        </div>
-
-        <div class="match-info">
-            <div class="info-card">
-                <h3>🏆 Información del Partido</h3>
-                <div class="stats">
-                    <span>Competición</span>
-                    <span>Liga 1 Betsson</span>
-                </div>
-                <div class="stats">
-                    <span>Estadio</span>
-                    <span>Estadio Nacional</span>
-                </div>
-                <div class="stats">
-                    <span>Árbitro</span>
-                    <span>Diego Haro</span>
-                </div>
-                <div class="stats">
-                    <span>Tiempo</span>
-                    <span id="matchTime">78' 2T</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Anuncio inferior -->
-        <div class="ad-container desktop-ad">
-            <script type="text/javascript">
-                atOptions = {
-                    'key' : 'a6c29732eed562ce6c743af0a3b60273',
-                    'format' : 'iframe',
-                    'height' : 90,
-                    'width' : 728,
-                    'params' : {}
-                };
-            </script>
-            <script type="text/javascript" src="//www.highperformanceformat.com/a6c29732eed562ce6c743af0a3b60273/invoke.js"></script>
         </div>
     </div>
 
-    <footer class="footer">
-        <p>© 2024 PeruvianGol - La mejor experiencia del fútbol peruano en vivo</p>
-        <p style="margin-top: 0.5rem; opacity: 0.7;">Disfruta de la Liga 1 Betsson con transmisión en alta definición</p>
-    </footer>
-
     <script>
-        const playOverlay = document.getElementById('playOverlay');
-        const videoPlayer = document.getElementById('videoPlayer');
-        const streamUrl = 'https://player.livepush.io/live/emX9U1VvdWRlp89';
+        // CONFIGURACIÓN DE SUPABASE
+        const SUPABASE_URL = 'TU_URL_AQUÍ';
+        const SUPABASE_KEY = 'TU_KEY_AQUÍ';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Función para iniciar el stream
-        function startStream() {
-            playOverlay.style.display = 'none';
-            videoPlayer.style.display = 'block';
-            videoPlayer.src = streamUrl;
-        }
-
-        // Event listener para el botón play
-        playOverlay.addEventListener('click', startStream);
-
-        // Animación del tiempo del partido
-        let minutes = 78;
-        let seconds = 0;
-        const matchTimeElement = document.getElementById('matchTime');
-
-        function updateMatchTime() {
-            seconds++;
-            if (seconds === 60) {
-                seconds = 0;
-                minutes++;
-            }
-            matchTimeElement.textContent = `${minutes}' 2T`;
-        }
-
-        // Actualizar cada segundo (simulación)
-        setInterval(updateMatchTime, 1000);
-
-        // Efectos de partículas en el fondo
-        function createParticle() {
-            const particle = document.createElement('div');
-            particle.style.position = 'fixed';
-            particle.style.width = Math.random() * 6 + 2 + 'px';
-            particle.style.height = particle.style.width;
-            particle.style.background = 'rgba(255, 68, 68, 0.3)';
-            particle.style.borderRadius = '50%';
-            particle.style.left = Math.random() * window.innerWidth + 'px';
-            particle.style.top = '-10px';
-            particle.style.pointerEvents = 'none';
-            particle.style.zIndex = '-1';
-            
-            document.body.appendChild(particle);
-            
-            const animation = particle.animate([
-                { transform: 'translateY(-10px)', opacity: 1 },
-                { transform: 'translateY(' + (window.innerHeight + 10) + 'px)', opacity: 0 }
-            ], {
-                duration: Math.random() * 3000 + 2000,
-                easing: 'linear'
-            });
-            
-            animation.addEventListener('finish', () => {
-                particle.remove();
-            });
-        }
-
-        // Crear partículas cada cierto tiempo
-        setInterval(createParticle, 3000);
-
-        // Precargar algunas partículas
-        for (let i = 0; i < 5; i++) {
-            setTimeout(createParticle, i * 600);
-        }
+        // Lógica para cargar y guardar datos...
     </script>
 </body>
 </html>
