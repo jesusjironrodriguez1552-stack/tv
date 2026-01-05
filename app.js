@@ -1,73 +1,88 @@
 // CONFIGURACIÓN SUPABASE
-const SUPABASE_URL = 'https://mdetlqvfdgtfatufdkht.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_TV9x9pfZw_vYR3-lF7NCIQ_ybSLs5Fh';
+const SUPABASE_URL = 'TU_URL_AQUÍ';
+const SUPABASE_KEY = 'TU_KEY_AQUÍ';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Referencias DOM
-const madreForm = document.getElementById('madreForm');
-const perfilForm = document.getElementById('perfilForm');
-const tablaPerfiles = document.getElementById('tablaPerfiles');
 const selectMadres = document.getElementById('cuenta_madre_id');
+const tablaPerfiles = document.getElementById('tablaPerfiles');
 const balanceMonto = document.getElementById('balance_monto');
 
-// --- 1. GESTIÓN DE CUENTAS MADRE ---
-madreForm.addEventListener('submit', async (e) => {
+// --- 1. REGISTRAR CUENTA MADRE Y GASTO ---
+document.getElementById('madreForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = {
-        plataforma: document.getElementById('m_plataforma').value,
-        email_cuenta: document.getElementById('m_email').value,
-        fecha_vencimiento: document.getElementById('m_vencimiento').value
-    };
+    const gasto = parseFloat(document.getElementById('m_gasto').value);
+    const plataforma = document.getElementById('m_plataforma').value;
+    const email = document.getElementById('m_email').value;
+    
+    const { error: e1 } = await _supabase.from('cuentas_madre').insert([{
+        plataforma: plataforma,
+        email_cuenta: email,
+        fecha_vencimiento: document.getElementById('m_vencimiento').value,
+        costo_compra: gasto
+    }]);
 
-    const { error } = await _supabase.from('cuentas_madre').insert([data]);
-    if (error) alert("Error: " + error.message);
-    else {
-        alert("Cuenta Madre registrada exitosamente");
-        madreForm.reset();
-        actualizarSelectMadres();
-    }
+    // Registro de EGRESO en caja
+    await _supabase.from('flujo_caja').insert([{ 
+        tipo: 'egreso', 
+        monto: gasto, 
+        descripcion: `Compra Cuenta: ${plataforma} (${email})` 
+    }]);
+
+    if (!e1) { alert("Cuenta y Gasto registrados!"); e.target.reset(); init(); }
 });
 
-// Actualiza el menú desplegable de cuentas
-async function actualizarSelectMadres() {
-    const { data: madres } = await _supabase.from('cuentas_madre').select('id, email_cuenta, plataforma');
-    selectMadres.innerHTML = '<option value="">Seleccione Cuenta Madre</option>';
-    madres?.forEach(m => {
-        selectMadres.innerHTML += `<option value="${m.id}">${m.plataforma} (${m.email_cuenta})</option>`;
-    });
-}
-
-// --- 2. GESTIÓN DE VENTAS Y PERFILES ---
-perfilForm.addEventListener('submit', async (e) => {
+// --- 2. REGISTRAR VENTA ---
+document.getElementById('perfilForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const precio = parseFloat(document.getElementById('monto').value);
     const nombre = document.getElementById('nombre_cliente').value;
 
-    const perfilData = {
+    const { error: e1 } = await _supabase.from('perfiles_clientes').insert([{
         nombre_cliente: nombre,
-        whatsapp: document.getElementById('whatsapp')?.value || '',
+        whatsapp: document.getElementById('whatsapp').value,
         cuenta_madre_id: selectMadres.value,
         fecha_vencimiento: document.getElementById('vencimiento_cliente').value,
-        precio_venta: precio
-    };
+        precio_venta: precio,
+        estado: 'activo'
+    }]);
 
-    // Insertar perfil
-    const { error: pError } = await _supabase.from('perfiles_clientes').insert([perfilData]);
-    
-    // Registrar en caja
-    const { error: cError } = await _supabase.from('flujo_caja').insert([
-        { tipo: 'ingreso', monto: precio, descripcion: `Venta perfil: ${nombre}` }
-    ]);
+    // Registro de INGRESO en caja
+    await _supabase.from('flujo_caja').insert([{ 
+        tipo: 'ingreso', 
+        monto: precio, 
+        descripcion: `Venta perfil a: ${nombre}` 
+    }]);
 
-    if (pError || cError) alert("Error al procesar");
-    else {
-        alert("Venta guardada!");
-        perfilForm.reset();
-        renderizarTodo();
-    }
+    if (!e1) { alert("Venta registrada con éxito"); e.target.reset(); renderizarTodo(); }
 });
 
-// --- 3. RENDERIZADO Y ALERTAS ---
+// --- 3. FUNCIÓN RENOVAR +30 DÍAS + WHATSAPP ---
+async function renovarYNotificar(id, nombre, whatsapp, fechaActual, monto, emailCuenta) {
+    let fecha = new Date(fechaActual);
+    fecha.setDate(fecha.getDate() + 30);
+    const nuevaFecha = fecha.toISOString().split('T')[0];
+
+    if(confirm(`¿Renovar 30 días a ${nombre}? Nueva fecha: ${nuevaFecha}`)) {
+        // Update en base de datos
+        await _supabase.from('perfiles_clientes').update({ fecha_vencimiento: nuevaFecha }).eq('id', id);
+        
+        // Registrar ingreso por renovación en caja
+        await _supabase.from('flujo_caja').insert([{ 
+            tipo: 'ingreso', 
+            monto: monto, 
+            descripcion: `Renovación: ${nombre}` 
+        }]);
+
+        // LINK DE WHATSAPP CON MENSAJE SOLICITADO
+        const mensaje = `Hola ${nombre}, tu cuenta (${emailCuenta}) ha sido renovada. vence el ${nuevaFecha}. ¡Gracias por tu preferencia!`;
+        const waLink = `https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}`;
+        
+        window.open(waLink, '_blank');
+        renderizarTodo();
+    }
+}
+
+// --- 4. RENDERIZADO Y FILTROS ---
 async function renderizarTodo() {
     const { data: perfiles } = await _supabase
         .from('perfiles_clientes')
@@ -75,48 +90,66 @@ async function renderizarTodo() {
         .order('fecha_vencimiento', { ascending: true });
 
     tablaPerfiles.innerHTML = '';
-    const hoy = new Date();
-
     perfiles?.forEach(p => {
+        const hoy = new Date();
         const vence = new Date(p.fecha_vencimiento);
         const dif = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
         
-        // Estilo según urgencia
-        let filaClase = "";
-        let fechaClase = "text-green-400";
-        if (dif < 0) { filaClase = "bg-red-900/20"; fechaClase = "text-red-500 font-bold"; }
-        else if (dif <= 3) { filaClase = "bg-yellow-900/20"; fechaClase = "text-yellow-500"; }
+        let colorFecha = "text-green-400";
+        let filaBg = "";
+        if (dif < 0) { colorFecha = "text-red-500 font-bold"; filaBg = "bg-red-900/10"; }
+        else if (dif <= 3) { colorFecha = "text-yellow-500 font-bold"; filaBg = "bg-yellow-900/10"; }
 
         tablaPerfiles.innerHTML += `
-            <tr class="${filaClase} border-b border-gray-700">
-                <td class="p-3 font-medium">${p.nombre_cliente}</td>
-                <td class="p-3 text-center text-xs text-gray-400">
-                    ${p.cuentas_madre?.plataforma}<br>${p.cuentas_madre?.email_cuenta}
+            <tr class="${filaBg} border-b border-gray-700 hover:bg-gray-750 transition">
+                <td class="p-4">
+                    <div class="font-bold">${p.nombre_cliente}</div>
+                    <div class="text-[10px] text-green-500 font-mono">${p.whatsapp || 'Sin WA'}</div>
                 </td>
-                <td class="p-3 text-center ${fechaClase}">${p.fecha_vencimiento}</td>
-                <td class="p-3 text-center text-green-300 font-mono">$${p.precio_venta}</td>
-                <td class="p-3 text-right">
-                    <button onclick="borrarPerfil('${p.id}')" class="bg-gray-700 hover:bg-red-600 p-1 rounded transition">✕</button>
+                <td class="p-4 text-center text-xs">
+                    <span class="text-blue-300 font-semibold">${p.cuentas_madre?.plataforma}</span><br>
+                    <span class="text-gray-500">${p.cuentas_madre?.email_cuenta}</span>
+                </td>
+                <td class="p-4 text-center ${colorFecha}">${p.fecha_vencimiento}</td>
+                <td class="p-4 text-center font-mono text-green-300">$${p.precio_venta}</td>
+                <td class="p-4 text-right space-x-2">
+                    <button onclick="renovarYNotificar('${p.id}', '${p.nombre_cliente}', '${p.whatsapp}', '${p.fecha_vencimiento}', ${p.precio_venta}, '${p.cuentas_madre?.email_cuenta}')" class="bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded text-xs transition">🔄 Renovar</button>
+                    <button onclick="borrarPerfil('${p.id}')" class="bg-red-700 hover:bg-red-600 px-2 py-1 rounded text-xs transition">✕</button>
                 </td>
             </tr>
         `;
     });
-    actualizarCaja();
+    actualizarBalance();
 }
 
-async function actualizarCaja() {
+function filtrarTabla() {
+    const busqueda = document.getElementById('buscador').value.toLowerCase();
+    const filas = tablaPerfiles.getElementsByTagName('tr');
+    for (let fila of filas) {
+        fila.style.display = fila.innerText.toLowerCase().includes(busqueda) ? '' : 'none';
+    }
+}
+
+async function actualizarBalance() {
     const { data } = await _supabase.from('flujo_caja').select('tipo, monto');
-    let total = data?.reduce((acc, mov) => mov.tipo === 'ingreso' ? acc + mov.monto : acc - mov.monto, 0) || 0;
+    const total = data?.reduce((acc, m) => m.tipo === 'ingreso' ? acc + m.monto : acc - m.monto, 0) || 0;
     balanceMonto.innerText = `$${total.toFixed(2)}`;
 }
 
+async function actualizarSelectMadres() {
+    const { data } = await _supabase.from('cuentas_madre').select('id, email_cuenta, plataforma');
+    selectMadres.innerHTML = '<option value="">Seleccionar Cuenta Madre</option>';
+    data?.forEach(m => {
+        selectMadres.innerHTML += `<option value="${m.id}">${m.plataforma} (${m.email_cuenta})</option>`;
+    });
+}
+
 async function borrarPerfil(id) {
-    if(confirm("¿Eliminar este registro?")) {
+    if(confirm("¿Eliminar este perfil?")) {
         await _supabase.from('perfiles_clientes').delete().eq('id', id);
         renderizarTodo();
     }
 }
 
-// Inicialización
-actualizarSelectMadres();
-renderizarTodo();
+function init() { actualizarSelectMadres(); renderizarTodo(); }
+init();
