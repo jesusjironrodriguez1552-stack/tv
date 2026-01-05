@@ -3,76 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Cuentas Pro</title>
+    <title>Admin Cuentas Pro - Sistema de Gestión</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .bg-gray-750 { background-color: #2d3748; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white p-4">
+<body class="bg-gray-900 text-white p-4 font-sans">
 
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
-            <h1 class="text-2xl font-bold text-blue-400">AdminCuentas <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">V2</span></h1>
-            <div id="balance" class="text-green-400 font-mono text-lg">Caja: $0.00</div>
+            <div>
+                <h1 class="text-3xl font-bold text-blue-400">AdminCuentas <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">V2.1</span></h1>
+                <p class="text-gray-500 text-sm">Control de perfiles y sobreventa</p>
+            </div>
+            <div id="balance" class="text-right">
+                <span class="text-gray-400 text-sm block">Balance de Caja</span>
+                <span id="balance_monto" class="text-2xl font-mono text-green-400">$0.00</span>
+            </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <section class="bg-gray-800 p-6 rounded-lg shadow-xl">
-                <h2 class="text-xl mb-4 font-semibold border-b border-gray-600 pb-2">Nuevo Perfil/Venta</h2>
-                <form id="perfilForm" class="space-y-4">
-                    <div>
-                        <label class="block text-sm text-gray-400">Cliente</label>
-                        <input type="text" id="nombre_cliente" class="w-full bg-gray-700 border-none rounded p-2 focus:ring-2 focus:ring-blue-500" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400">WhatsApp</label>
-                        <input type="text" id="whatsapp" class="w-full bg-gray-700 border-none rounded p-2" placeholder="+51...">
-                    </div>
-                    <div>
-                        <label class="block text-sm text-gray-400">Asignar a Cuenta Madre (ID)</label>
-                        <input type="text" id="cuenta_madre_id" class="w-full bg-gray-700 border-none rounded p-2" required>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
+            <div class="lg:col-span-4 space-y-6">
+                
+                <section class="bg-gray-800 p-5 rounded-xl shadow-2xl border-t-4 border-yellow-500">
+                    <h2 class="text-lg mb-4 font-bold text-yellow-400 flex items-center">
+                        <span class="mr-2">📂</span> Registrar Cuenta Madre
+                    </h2>
+                    <form id="madreForm" class="space-y-3">
+                        <input type="text" id="m_plataforma" placeholder="Plataforma (Netflix, Disney...)" class="w-full bg-gray-700 p-2 rounded border border-gray-600 focus:outline-none focus:border-yellow-500" required>
+                        <input type="email" id="m_email" placeholder="Correo electrónico" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
                         <div>
-                            <label class="block text-sm text-gray-400">Vence (Cliente)</label>
-                            <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 border-none rounded p-2 text-sm" required>
+                            <label class="text-xs text-gray-400 block mb-1">Vencimiento (Tu pago)</label>
+                            <input type="date" id="m_vencimiento" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
                         </div>
-                        <div>
-                            <label class="block text-sm text-gray-400">Monto ($)</label>
-                            <input type="number" id="monto" class="w-full bg-gray-700 border-none rounded p-2" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">Guardar Venta</button>
-                </form>
-            </section>
+                        <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded font-bold transition">Guardar Cuenta Madre</button>
+                    </form>
+                </section>
 
-            <section class="md:col-span-2 bg-gray-800 p-6 rounded-lg shadow-xl overflow-x-auto">
-                <h2 class="text-xl mb-4 font-semibold border-b border-gray-600 pb-2">Gestión de Perfiles (Sobreventa)</h2>
-                <table class="w-full text-left">
-                    <thead>
-                        <tr class="text-gray-400 border-b border-gray-700">
-                            <th class="p-2">Cliente</th>
-                            <th class="p-2">Cuenta Madre</th>
-                            <th class="p-2">Vencimiento</th>
-                            <th class="p-2">Estado</th>
-                            <th class="p-2">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaPerfiles">
-                        </tbody>
-                </table>
-            </section>
+                <section class="bg-gray-800 p-5 rounded-xl shadow-2xl border-t-4 border-blue-500">
+                    <h2 class="text-lg mb-4 font-bold text-blue-400 flex items-center">
+                        <span class="mr-2">👤</span> Nueva Venta de Perfil
+                    </h2>
+                    <form id="perfilForm" class="space-y-3">
+                        <input type="text" id="nombre_cliente" placeholder="Nombre del Cliente" class="w-full bg-gray-700 p-2 rounded border border-gray-600 focus:outline-none focus:border-blue-500" required>
+                        
+                        <div>
+                            <label class="text-xs text-gray-400 block mb-1">Asignar a Cuenta</label>
+                            <select id="cuenta_madre_id" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
+                                <option value="">Cargando cuentas...</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">Vence (Cliente)</label>
+                                <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">Monto Cobrado</label>
+                                <input type="number" id="monto" placeholder="0.00" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-bold transition">Registrar Venta</button>
+                    </form>
+                </section>
+            </div>
+
+            <div class="lg:col-span-8">
+                <section class="bg-gray-800 p-6 rounded-xl shadow-2xl min-h-[600px]">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Monitor de Perfiles y Sobreventa</h2>
+                        <div class="flex space-x-2">
+                            <span class="text-xs bg-red-900 text-red-200 px-2 py-1 rounded">Vencido</span>
+                            <span class="text-xs bg-yellow-900 text-yellow-200 px-2 py-1 rounded">Próximo</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-700 text-sm">
+                                    <th class="p-3 uppercase">Cliente</th>
+                                    <th class="p-3 uppercase text-center">Cuenta Madre</th>
+                                    <th class="p-3 uppercase text-center">Vencimiento</th>
+                                    <th class="p-3 uppercase text-center">Monto</th>
+                                    <th class="p-3 uppercase text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaPerfiles" class="divide-y divide-gray-700">
+                                </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
 
         </div>
     </div>
 
-    <script>
-        // CONFIGURACIÓN DE SUPABASE
-        const SUPABASE_URL = 'https://mdetlqvfdgtfatufdkht.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_TV9x9pfZw_vYR3-lF7NCIQ_ybSLs5Fh';
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // Lógica para cargar y guardar datos...
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>
