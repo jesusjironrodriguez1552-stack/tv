@@ -3,92 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Cuentas Pro - Control Total</title>
+    <title>Panel Admin Cuentas Pro V4.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .bg-gray-750 { background-color: #2d3748; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1a202c; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+    </style>
 </head>
-<body class="bg-gray-900 text-white p-4 font-sans">
+<body class="bg-gray-900 text-white p-4 font-sans leading-tight">
 
     <div class="max-w-7xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-gray-700 pb-4 gap-4">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-gray-700 pb-4 gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-blue-400">AdminCuentas <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">V4.0</span></h1>
-                <p class="text-gray-500 text-sm italic">Gestión, Sobreventa, Gastos y Renovaciones</p>
+                <h1 class="text-3xl font-bold text-blue-400">AdminCuentas <span class="text-xs bg-blue-600 text-white px-2 py-1 rounded">V4.5</span></h1>
+                <p class="text-gray-500 text-sm italic">Gestión, Sobreventa y Cobranzas</p>
             </div>
             
             <div class="w-full md:w-1/3">
-                <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="🔍 Buscar cliente o correo..." class="w-full bg-gray-800 border border-gray-600 p-2 rounded-lg outline-none focus:border-blue-500">
+                <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="🔍 Buscar cliente, correo o plataforma..." class="w-full bg-gray-800 border border-gray-600 p-2 rounded-lg outline-none focus:border-blue-500 transition-all">
             </div>
 
-            <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 text-right min-w-[150px]">
-                <span class="text-gray-400 text-xs block uppercase">Balance Neto</span>
+            <div class="bg-gray-800 p-3 rounded-lg border border-gray-700 text-right min-w-[160px]">
+                <span class="text-gray-400 text-[10px] uppercase tracking-widest block">Balance en Caja</span>
                 <span id="balance_monto" class="text-3xl font-mono text-green-400">$0.00</span>
             </div>
         </header>
 
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-800 p-4 rounded-xl border-b-4 border-blue-500 shadow-lg text-center">
+                <span class="text-gray-400 text-[10px] uppercase block mb-1">Activos</span>
+                <span id="stat_activos" class="text-2xl font-bold text-blue-400">0</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border-b-4 border-red-600 shadow-lg text-center">
+                <span class="text-red-400 text-[10px] uppercase block mb-1">Vencidos</span>
+                <span id="stat_vencidos" class="text-2xl font-bold text-red-500">0</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border-b-4 border-yellow-500 shadow-lg text-center">
+                <span class="text-yellow-400 text-[10px] uppercase block mb-1">Vencen < 3d</span>
+                <span id="stat_proximos" class="text-2xl font-bold text-yellow-500">0</span>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-xl border-b-4 border-green-600 shadow-lg text-center">
+                <span class="text-green-400 text-[10px] uppercase block mb-1">Utilidad Bruta</span>
+                <span id="stat_ganancia" class="text-2xl font-bold text-green-500">$0</span>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             <div class="lg:col-span-4 space-y-6">
-                <section class="bg-gray-800 p-5 rounded-xl shadow-2xl border-l-4 border-yellow-500">
-                    <h2 class="text-lg mb-4 font-bold text-yellow-400">📂 Registrar Compra Cuenta</h2>
+                <section class="bg-gray-800 p-5 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-md mb-4 font-bold text-yellow-400 uppercase tracking-wider flex items-center">
+                        <span class="mr-2">📂</span> Registrar Cuenta Madre
+                    </h2>
                     <form id="madreForm" class="space-y-3">
-                        <input type="text" id="m_plataforma" placeholder="Plataforma (Netflix, Disney...)" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none focus:border-yellow-500" required>
+                        <input type="text" id="m_plataforma" placeholder="Plataforma (Ej: Netflix)" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none focus:border-yellow-500" required>
                         <input type="email" id="m_email" placeholder="Correo de la cuenta" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none" required>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase">Vencimiento M.</label>
+                                <label class="text-[9px] text-gray-400 uppercase">Vence (Tú pagas)</label>
                                 <input type="date" id="m_vencimiento" class="w-full bg-gray-700 p-2 rounded border border-gray-600 text-xs" required>
                             </div>
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase">Costo Compra</label>
-                                <input type="number" id="m_gasto" step="0.01" placeholder="$ 0.00" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
+                                <label class="text-[9px] text-gray-400 uppercase">Costo Compra</label>
+                                <input type="number" id="m_gasto" step="0.01" placeholder="0.00" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none" required>
                             </div>
                         </div>
-                        <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded font-bold transition">Registrar Gasto</button>
+                        <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded font-bold transition duration-200">Registrar Gasto</button>
                     </form>
                 </section>
 
-                <section class="bg-gray-800 p-5 rounded-xl shadow-2xl border-l-4 border-blue-500">
-                    <h2 class="text-lg mb-4 font-bold text-blue-400">👤 Nueva Venta Perfil</h2>
+                <section class="bg-gray-800 p-5 rounded-xl shadow-2xl border border-gray-700">
+                    <h2 class="text-md mb-4 font-bold text-blue-400 uppercase tracking-wider flex items-center">
+                        <span class="mr-2">👤</span> Nueva Venta Perfil
+                    </h2>
                     <form id="perfilForm" class="space-y-3">
                         <input type="text" id="nombre_cliente" placeholder="Nombre del Cliente" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none focus:border-blue-500" required>
                         <input type="text" id="whatsapp" placeholder="WhatsApp (Ej: 51999888777)" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none">
-                        <select id="cuenta_madre_id" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none" required></select>
+                        <select id="cuenta_madre_id" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none" required>
+                            <option value="">Cargando cuentas...</option>
+                        </select>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase">Vence Cliente</label>
+                                <label class="text-[9px] text-gray-400 uppercase">Vence Cliente</label>
                                 <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 p-2 rounded border border-gray-600 text-xs" required>
                             </div>
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase">Precio Venta</label>
-                                <input type="number" id="monto" step="0.01" placeholder="$ 0.00" class="w-full bg-gray-700 p-2 rounded border border-gray-600" required>
+                                <label class="text-[9px] text-gray-400 uppercase">Precio Venta</label>
+                                <input type="number" id="monto" step="0.01" placeholder="0.00" class="w-full bg-gray-700 p-2 rounded border border-gray-600 outline-none" required>
                             </div>
                         </div>
-                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-bold transition">Registrar Venta</button>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-bold transition duration-200">Registrar Venta</button>
                     </form>
                 </section>
             </div>
 
             <div class="lg:col-span-8">
                 <section class="bg-gray-800 rounded-xl shadow-2xl overflow-hidden border border-gray-700">
-                    <table class="w-full text-left text-sm" id="tablaPrincipal">
-                        <thead class="bg-gray-700 text-gray-300">
-                            <tr>
-                                <th class="p-4">Cliente</th>
-                                <th class="p-4 text-center">Cuenta Madre</th>
-                                <th class="p-4 text-center">Vencimiento</th>
-                                <th class="p-4 text-center">Monto</th>
-                                <th class="p-4 text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaPerfiles" class="divide-y divide-gray-700">
-                            </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm" id="tablaPrincipal">
+                            <thead class="bg-gray-700 text-gray-300">
+                                <tr>
+                                    <th class="p-4">Cliente / WhatsApp</th>
+                                    <th class="p-4 text-center">Cuenta Madre</th>
+                                    <th class="p-4 text-center">Vencimiento</th>
+                                    <th class="p-4 text-center">Monto</th>
+                                    <th class="p-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaPerfiles" class="divide-y divide-gray-700">
+                                </tbody>
+                        </table>
+                    </div>
                 </section>
             </div>
+
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        // 1. CONFIGURACIÓN (REEMPLAZA ESTO)
+        const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co'; 
+        const SUPABASE_KEY = 'TU_KEY_ANON'; 
+
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Referencias DOM
+        const selectMadres = document.getElementById('cuenta_madre_id');
+        const tablaPerfiles = document.getElementById('tablaPerfiles');
+        const balanceMonto = document.getElementById('balance_monto');
+
+        // --- FUNCIONES DE WHATSAPP ---
+        function notificarVencimiento(nombre, whatsapp, emailCuenta, dias) {
+            let mensaje = dias < 0 
+                ? `Hola ${nombre}, tu perfil de (${emailCuenta}) ha VENCIDO. ¿Deseas renovar hoy?`
+                : `Hola ${nombre}, tu perfil de (${emailCuenta}) vence en ${dias} día(s). ¿Gustas renovar?`;
+            
+            const waLink = `https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}`;
+            window.open(waLink, '_blank');
+        }
+
+        async function renovarYNotificar(id, nombre, whatsapp, fechaActual, monto, emailCuenta) {
+            let fecha = new Date(fechaActual);
+            fecha.setDate(fecha.getDate() + 30);
+            const nuevaFecha = fecha.toISOString().split('T')[0];
+
+            if(confirm(`¿Renovar 30 días a ${nombre}?`)) {
+                await _supabase.from('perfiles_clientes').update({ fecha_vencimiento: nuevaFecha }).eq('id', id);
+                await _supabase.from('flujo_caja').insert([{ tipo: 'ingreso', monto: monto, descripcion: `Renovación: ${nombre}` }]);
+                
+                const mensaje = `Hola ${nombre}, tu cuenta (${emailCuenta}) ha sido renovada. Vence el ${nuevaFecha}. ¡Gracias!`;
+                window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(mensaje)}`, '_blank');
+                renderizarTodo();
+            }
+        }
+
+        // --- LOGICA DE FORMULARIOS ---
+        document.getElementById('madreForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const gasto = parseFloat(document.getElementById('m_gasto').value);
+            const plataforma = document.getElementById('m_plataforma').value;
+            const email = document.getElementById('m_email').value;
+
+            const { error } = await _supabase.from('cuentas_madre').insert([{
+                plataforma, email_cuenta: email, fecha_vencimiento: document.getElementById('m_vencimiento').value, costo_compra: gasto
+            }]);
+
+            await _supabase.from('flujo_caja').insert([{ tipo: 'egreso', monto: gasto, descripcion: `Compra: ${plataforma} (${email})` }]);
+
+            if (!error) { e.target.reset(); init(); }
+        });
+
+        document.getElementById('perfilForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const precio = parseFloat(document.getElementById('monto').value);
+            const nombre = document.getElementById('nombre_cliente').value;
+
+            const { error } = await _supabase.from('perfiles_clientes').insert([{
+                nombre_cliente: nombre, whatsapp: document.getElementById('whatsapp').value,
+                cuenta_madre_id: selectMadres.value, fecha_vencimiento: document.getElementById('vencimiento_cliente').value,
+                precio_venta: precio
+            }]);
+
+            await _supabase.from('flujo_caja').insert([{ tipo: 'ingreso', monto: precio, descripcion: `Venta: ${nombre}` }]);
+
+            if (!error) { e.target.reset(); renderizarTodo(); }
+        });
+
+        // --- RENDERIZADO Y BUSQUEDA ---
+        async function renderizarTodo() {
+            const { data: perfiles } = await _supabase.from('perfiles_clientes').select('*, cuentas_madre(email_cuenta, plataforma)').order('fecha_vencimiento', { ascending: true });
+            const { data: flujo } = await _supabase.from('flujo_caja').select('tipo, monto');
+
+            tablaPerfiles.innerHTML = '';
+            let activos = 0, vencidos = 0, proximos = 0;
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+
+            perfiles?.forEach(p => {
+                const vence = new Date(p.fecha_vencimiento);
+                vence.setHours(24,0,0,0);
+                const dif = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
+                
+                activos++;
+                if (dif < 0) vencidos++; else if (dif <= 3) proximos++;
+
+                let colorFecha = dif < 0 ? "text-red-500 font-bold" : (dif <= 3 ? "text-yellow-500 font-bold" : "text-green-400");
+                let filaBg = dif < 0 ? "bg-red-900/10" : "";
+
+                tablaPerfiles.innerHTML += `
+                    <tr class="${filaBg} border-b border-gray-700 hover:bg-gray-750 transition">
+                        <td class="p-4">
+                            <div class="font-bold text-gray-100">${p.nombre_cliente}</div>
+                            <div class="text-[10px] text-green-500 font-mono">${p.whatsapp || 'SIN WA'}</div>
+                        </td>
+                        <td class="p-4 text-center text-[11px] text-gray-400 uppercase">
+                            <span class="text-blue-400">${p.cuentas_madre?.plataforma}</span><br>${p.cuentas_madre?.email_cuenta}
+                        </td>
+                        <td class="p-4 text-center">
+                            <div class="${colorFecha}">${p.fecha_vencimiento}</div>
+                            <div class="text-[9px] opacity-50 uppercase">${dif < 0 ? 'Vencido' : 'Quedan '+dif+'d'}</div>
+                        </td>
+                        <td class="p-4 text-center text-green-300 font-mono">$${p.precio_venta}</td>
+                        <td class="p-4 text-right flex justify-end gap-1">
+                            <button onclick="notificarVencimiento('${p.nombre_cliente}', '${p.whatsapp}', '${p.cuentas_madre?.email_cuenta}', ${dif})" class="bg-green-700 hover:bg-green-600 px-2 py-1 rounded text-[10px]" title="Notificar">🔔</button>
+                            <button onclick="renovarYNotificar('${p.id}', '${p.nombre_cliente}', '${p.whatsapp}', '${p.fecha_vencimiento}', ${p.precio_venta}, '${p.cuentas_madre?.email_cuenta}')" class="bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded text-[10px]">🔄</button>
+                            <button onclick="borrarPerfil('${p.id}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-[10px]">✕</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('stat_activos').innerText = activos;
+            document.getElementById('stat_vencidos').innerText = vencidos;
+            document.getElementById('stat_proximos').innerText = proximos;
+            
+            let total = flujo?.reduce((acc, m) => m.tipo === 'ingreso' ? acc + m.monto : acc - m.monto, 0) || 0;
+            document.getElementById('stat_ganancia').innerText = `$${total.toFixed(2)}`;
+            balanceMonto.innerText = `$${total.toFixed(2)}`;
+        }
+
+        function filtrarTabla() {
+            const b = document.getElementById('buscador').value.toLowerCase();
+            const filas = tablaPerfiles.getElementsByTagName('tr');
+            for (let f of filas) f.style.display = f.innerText.toLowerCase().includes(b) ? '' : 'none';
+        }
+
+        async function borrarPerfil(id) { if(confirm("¿Eliminar?")) { await _supabase.from('perfiles_clientes').delete().eq('id', id); renderizarTodo(); } }
+
+        async function init() {
+            const { data } = await _supabase.from('cuentas_madre').select('id, email_cuenta, plataforma');
+            selectMadres.innerHTML = '<option value="">Seleccionar Cuenta</option>';
+            data?.forEach(m => selectMadres.innerHTML += `<option value="${m.id}">${m.plataforma} (${m.email_cuenta})</option>`);
+            renderizarTodo();
+        }
+
+        init();
+    </script>
 </body>
 </html>
