@@ -1,6 +1,6 @@
 // CONFIGURACIÓN SUPABASE
-const SUPABASE_URL = 'https://TU_URL.supabase.co'; 
-const SUPABASE_KEY = 'TU_KEY_ANON'; 
+const SUPABASE_URL = 'https://mdetlqvfdgtfatufdkht.supabase.co'; 
+const SUPABASE_KEY = 'sb_publishable_TV9x9pfZw_vYR3-lF7NCIQ_ybSLs5Fh'; 
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const tablaPerfiles = document.getElementById('tablaPerfiles');
