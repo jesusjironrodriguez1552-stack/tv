@@ -1,11 +1,9 @@
-// app.js - LÓGICA CENTRAL Y GESTIÓN DE CLIENTES
+// app.js - LÓGICA CENTRAL CVSE
 
-// 1. Definimos la función de pestañas PRIMERO para que esté lista al cargar
 function configurarTabs() {
     const botones = document.querySelectorAll('nav button');
     botones.forEach(boton => {
         boton.onclick = (e) => {
-            // Buscamos el ID de sección basándonos en el ID del botón
             const idCompleto = e.currentTarget.id; 
             const seccionId = idCompleto.replace('btn-tab-', 'seccion-');
             cambiarSeccion(seccionId);
@@ -13,17 +11,14 @@ function configurarTabs() {
     });
 }
 
-// 2. Ejecución principal al cargar el documento
 document.addEventListener('DOMContentLoaded', () => {
-    configurarTabs(); // Ahora ya existe y no dará "ReferenceError"
+    configurarTabs();
     renderizarTodo();
 
-    // FORMULARIO DE REGISTRO DE VENTAS
     const perfilForm = document.getElementById('perfilForm');
     if (perfilForm) {
         perfilForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const nombre = document.getElementById('nombre_cliente').value;
             const whatsapp = document.getElementById('whatsapp').value;
             const madreId = document.getElementById('cuenta_madre_id').value;
@@ -45,34 +40,35 @@ document.addEventListener('DOMContentLoaded', () => {
             await _supabase.from('flujo_caja').insert([{
                 tipo: 'ingreso',
                 monto: monto,
-                descripcion: `Venta Perfil: ${nombre} (${perfil})`,
+                descripcion: `Venta: ${nombre} (${perfil})`,
                 fecha: new Date().toISOString()
             }]);
 
             e.target.reset();
             renderizarTodo();
-            alert("✅ Venta registrada");
         });
     }
 });
-
-// --- RENDERIZADO Y UTILIDADES ---
 
 async function renderizarTodo() {
     await cargarSelectMadres();
     await renderizarTablaClientes();
     actualizarBalanceGlobal();
-    
-    // Verificamos si los otros archivos ya cargaron sus funciones
     if (typeof renderizarMadres === 'function') renderizarMadres();
     if (typeof renderizarCaja === 'function') renderizarCaja();
 }
 
 async function renderizarTablaClientes() {
-    const { data: perfiles } = await _supabase
+    // CORRECCIÓN ERROR 400: Especificamos la FK explícitamente
+    const { data: perfiles, error } = await _supabase
         .from('perfiles_clientes')
-        .select('*, cuentas_madre(plataforma, email)');
+        .select('*, cuentas_madre!cuenta_madre_id(plataforma, email)');
     
+    if (error) {
+        console.error("Error en consulta:", error);
+        return;
+    }
+
     const tabla = document.getElementById('tablaPerfiles');
     if (!tabla) return;
     tabla.innerHTML = '';
@@ -83,10 +79,10 @@ async function renderizarTablaClientes() {
         tr.innerHTML = `
             <td class="p-5">
                 <p class="font-bold text-white uppercase">${item.nombre_cliente}</p>
-                <p class="text-[10px] text-gray-500 font-mono">${item.whatsapp || 'Sin WhatsApp'}</p>
+                <p class="text-[10px] text-gray-500 font-mono">${item.whatsapp || 'S/W'}</p>
             </td>
             <td class="p-5 text-xs">
-                <p class="text-blue-400 font-black italic uppercase">${item.cuentas_madre?.plataforma || 'Sin Cuenta'}</p>
+                <p class="text-blue-400 font-black italic uppercase">${item.cuentas_madre?.plataforma || 'N/A'}</p>
                 <p class="text-gray-400 font-bold uppercase tracking-tighter">${item.perfil_asignado}</p>
             </td>
             <td class="p-5 text-center">
@@ -119,12 +115,10 @@ async function renderizarTablaClientes() {
     });
 }
 
-// Las demás funciones (cambiarSeccion, cargarSelectMadres, etc.) se mantienen igual
 function cambiarSeccion(id) {
     document.querySelectorAll('.seccion-contenido').forEach(s => s.classList.add('hidden'));
     const seccion = document.getElementById(id);
     if (seccion) seccion.classList.remove('hidden');
-    
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
     const btnId = id.replace('seccion-', 'btn-tab-');
     const btn = document.getElementById(btnId);
@@ -136,7 +130,6 @@ async function cargarSelectMadres() {
     const select = document.getElementById('cuenta_madre_id');
     const selectMigrar = document.getElementById('migrar_nueva_madre');
     if (!select) return;
-
     const opciones = data?.map(m => `<option value="${m.id}">${m.plataforma} (${m.email})</option>`).join('');
     select.innerHTML = `<option value="">Seleccionar Cuenta...</option>${opciones}`;
     if (selectMigrar) selectMigrar.innerHTML = opciones;
@@ -149,9 +142,25 @@ async function actualizarBalanceGlobal() {
     if (el) el.innerText = `$${total.toFixed(2)}`;
 }
 
-// Funciones de utilidad para botones
+// Funciones de utilidad
 function enviarWhatsApp(n, c, v) { window.open(`https://wa.me/${n}?text=Hola ${c}, tu cuenta vence el ${v}`, '_blank'); }
 function copiarDatos(e, p) { navigator.clipboard.writeText(`Cuenta: ${p}\nCorreo: ${e}`); alert("Copiado"); }
 function abrirModalMigrar(id) { document.getElementById('migrar_perfil_id').value = id; document.getElementById('modalMigrar').classList.remove('hidden'); }
 function cerrarModal() { document.getElementById('modalMigrar').classList.add('hidden'); }
+async function confirmarMigracion() {
+    const id = document.getElementById('migrar_perfil_id').value;
+    const nuevaMadre = document.getElementById('migrar_nueva_madre').value;
+    await _supabase.from('perfiles_clientes').update({ cuenta_madre_id: nuevaMadre }).eq('id', id);
+    cerrarModal();
+    renderizarTodo();
+}
 async function eliminarPerfil(id) { if(confirm('¿Eliminar?')) { await _supabase.from('perfiles_clientes').delete().eq('id', id); renderizarTodo(); } }
+
+function filtrarTabla() {
+    const filtro = document.getElementById('buscador').value.toUpperCase();
+    const filas = document.getElementById('tablaPerfiles').getElementsByTagName('tr');
+    for (let i = 0; i < filas.length; i++) {
+        const texto = filas[i].innerText.toUpperCase();
+        filas[i].style.display = texto.includes(filtro) ? "" : "none";
+    }
+}
