@@ -3,79 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA CVSE V6.0 - TOTAL</title>
+    <title>SISTEMA CVSE V6.0 - CONTROL TOTAL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .bg-gray-850 { background-color: #1a202c; }
         .tab-active { border-bottom: 4px solid #3b82f6; color: #3b82f6; font-weight: bold; }
         
-        /* Ajuste Responsivo Inteligente */
-        .contenedor-tabla { overflow-x: auto; width: 100%; }
+        /* RESPONSIVO INTELIGENTE */
+        .contenedor-tabla { overflow-x: auto; width: 100%; border-radius: 1rem; }
         
-        /* En PC (pantallas mayores a 1024px) la tabla no tiene ancho mínimo, se expande */
+        /* En PC: Todo el ancho disponible */
         @media (min-width: 1024px) {
             .tabla-clientes { min-width: 100%; table-layout: auto; }
         }
         
-        /* En Celular, forzamos un ancho mínimo para proteger los botones */
+        /* En Celular: Scroll lateral para no amontonar botones */
         @media (max-width: 1023px) {
-            .tabla-clientes { min-width: 800px; }
+            .tabla-clientes { min-width: 850px; }
         }
 
-        .card-madre { min-height: 320px; display: flex; flex-direction: column; justify-content: space-between; }
+        .card-madre { min-height: 350px; display: flex; flex-direction: column; justify-content: space-between; }
+        .select-all { user-select: all; }
     </style>
 </head>
-<body class="bg-gray-900 text-white p-2 md:p-6 font-sans">
+<body class="bg-gray-900 text-white p-2 md:p-6 font-sans leading-tight">
 
     <div class="max-w-7xl mx-auto">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-800 pb-6">
             <div>
-                <h1 class="text-3xl font-black text-blue-500 tracking-tighter uppercase">CVSE V6.0</h1>
-                <p class="text-gray-500 text-sm">Panel de Control Profesional</p>
+                <h1 class="text-3xl font-black text-blue-500 tracking-tighter uppercase italic">CVSE V6.0</h1>
+                <p class="text-gray-500 text-sm font-bold uppercase tracking-widest">Panel de Administración</p>
             </div>
-            <div class="flex flex-wrap justify-center gap-4">
-                <button onclick="descargarBackup()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-xs font-bold uppercase border border-gray-700 transition">📥 Backup Excel</button>
-                <div class="bg-black p-4 rounded-xl border border-green-500/40 text-right shadow-2xl min-w-[180px]">
-                    <span class="text-green-500 text-[10px] uppercase block font-black">Caja Total</span>
+            <div class="flex flex-wrap justify-center gap-4 items-center">
+                <button onclick="descargarBackup()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase border border-gray-700 transition">📥 Exportar Backup</button>
+                <div class="bg-black p-4 rounded-2xl border border-green-500/40 text-right shadow-2xl min-w-[200px]">
+                    <span class="text-green-500 text-[10px] uppercase block font-black">Dinero en Caja</span>
                     <span id="balance_monto" class="text-3xl font-mono text-white font-bold">$0.00</span>
                 </div>
             </div>
         </header>
 
-        <nav class="flex gap-8 mb-8 border-b border-gray-800 overflow-x-auto no-scrollbar">
-            <button onclick="cambiarSeccion('seccion-clientes')" id="btn-tab-clientes" class="tab-active pb-4 text-sm uppercase tracking-widest whitespace-nowrap">👥 Clientes</button>
-            <button onclick="cambiarSeccion('seccion-madres')" id="btn-tab-madres" class="pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap">🖥️ Inventario Cuentas</button>
+        <nav class="flex gap-8 mb-8 border-b border-gray-800 overflow-x-auto">
+            <button onclick="cambiarSeccion('seccion-clientes')" id="btn-tab-clientes" class="tab-active pb-4 text-sm uppercase tracking-widest whitespace-nowrap">👥 Gestión de Clientes</button>
+            <button onclick="cambiarSeccion('seccion-madres')" id="btn-tab-madres" class="pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap">🖥️ Inventario Cuentas Madre</button>
         </nav>
 
         <div id="seccion-clientes" class="seccion-contenido">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <aside class="lg:col-span-4 space-y-6">
-                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
-                        <h2 class="text-xs font-bold text-blue-400 uppercase mb-4 tracking-widest italic border-b border-gray-700 pb-2">➕ Nueva Venta</h2>
+                    <div class="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-xl">
+                        <h2 class="text-xs font-black text-blue-400 uppercase mb-6 tracking-widest italic border-b border-gray-700 pb-2">➕ Registrar Venta</h2>
                         <form id="perfilForm" class="space-y-4">
-                            <input type="text" id="nombre_cliente" placeholder="Nombre Cliente" class="w-full bg-gray-700 p-3 rounded-xl outline-none border border-gray-600 focus:border-blue-500" required>
-                            <input type="text" id="whatsapp" placeholder="WhatsApp (Ej: 519...)" class="w-full bg-gray-700 p-3 rounded-xl outline-none border border-gray-600">
-                            <select id="cuenta_madre_id" class="w-full bg-gray-700 p-3 rounded-xl outline-none border border-gray-600 text-sm" required></select>
-                            <input type="text" id="perfil_asignado" placeholder="Perfil / PIN" class="w-full bg-gray-700 p-3 rounded-xl outline-none border border-gray-600" required>
+                            <input type="text" id="nombre_cliente" placeholder="Nombre Cliente" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600 focus:border-blue-500" required>
+                            <input type="text" id="whatsapp" placeholder="WhatsApp (519...)" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600">
+                            <select id="cuenta_madre_id" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600 text-sm" required></select>
+                            <input type="text" id="perfil_asignado" placeholder="Perfil y PIN" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600" required>
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 p-3 rounded-xl text-xs border border-gray-600" required>
-                                <input type="number" id="monto" step="0.01" placeholder="Precio $" class="w-full bg-gray-700 p-3 rounded-xl outline-none border border-gray-600" required>
+                                <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600" required>
+                                <input type="number" id="monto" step="0.01" placeholder="Cobro $" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600" required>
                             </div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-bold uppercase text-xs transition-all">Guardar</button>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg">Guardar Nueva Venta</button>
                         </form>
                     </div>
                 </aside>
 
                 <main class="lg:col-span-8">
-                    <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="🔍 Buscar cliente o servicio..." class="w-full mb-6 bg-gray-800 border border-gray-700 p-4 rounded-xl outline-none focus:border-blue-500">
-                    <div class="contenedor-tabla rounded-2xl border border-gray-700 shadow-2xl bg-gray-800">
+                    <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="🔍 Buscar cliente, servicio o perfil..." class="w-full mb-6 bg-gray-800 border border-gray-700 p-4 rounded-2xl outline-none focus:border-blue-500 shadow-inner">
+                    <div class="contenedor-tabla shadow-2xl border border-gray-700 bg-gray-800">
                         <table class="tabla-clientes w-full text-left text-sm">
                             <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]">
                                 <tr>
-                                    <th class="p-5">Cliente</th>
-                                    <th class="p-5">Cuenta</th>
-                                    <th class="p-5 text-center">Vence</th>
+                                    <th class="p-5">Información Cliente</th>
+                                    <th class="p-5">Servicio / Perfil</th>
+                                    <th class="p-5 text-center">Vencimiento</th>
                                     <th class="p-5 text-right">Acciones</th>
                                 </tr>
                             </thead>
@@ -89,17 +90,17 @@
         <div id="seccion-madres" class="seccion-contenido hidden">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <aside class="lg:col-span-4">
-                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-xl">
-                        <h2 class="text-xs font-bold text-yellow-500 uppercase mb-4 tracking-widest italic border-b border-gray-700 pb-2">📂 Agregar Cuenta</h2>
+                    <div class="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-xl">
+                        <h2 class="text-xs font-black text-yellow-500 uppercase mb-6 tracking-widest italic border-b border-gray-700 pb-2">📂 Nueva Cuenta Madre</h2>
                         <form id="madreForm" class="space-y-4">
-                            <input type="text" id="m_plataforma" placeholder="Plataforma" class="w-full bg-gray-700 p-3 rounded-xl border border-gray-600 outline-none" required>
-                            <input type="email" id="m_email" placeholder="Correo" class="w-full bg-gray-700 p-3 rounded-xl border border-gray-600 outline-none" required>
-                            <input type="text" id="m_password" placeholder="Contraseña" class="w-full bg-gray-700 p-3 rounded-xl border border-gray-600 outline-none" required>
+                            <input type="text" id="m_plataforma" placeholder="Plataforma" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            <input type="email" id="m_email" placeholder="Correo Acceso" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            <input type="text" id="m_password" placeholder="Contraseña Acceso" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" id="m_vencimiento" class="bg-gray-700 p-3 rounded-xl text-xs border border-gray-600" required>
-                                <input type="number" id="m_gasto" step="0.01" placeholder="Costo $" class="bg-gray-700 p-3 rounded-xl border border-gray-600" required>
+                                <input type="date" id="m_vencimiento" class="bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600" required>
+                                <input type="number" id="m_gasto" step="0.01" placeholder="Inversión $" class="bg-gray-700 p-4 rounded-2xl border border-gray-600" required>
                             </div>
-                            <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold text-xs uppercase text-black transition-all">Registrar Inventario</button>
+                            <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-2xl font-black text-xs uppercase text-black transition-all">Registrar Inventario</button>
                         </form>
                     </div>
                 </aside>
@@ -110,14 +111,14 @@
         </div>
     </div>
 
-    <div id="modalMigrar" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50">
+    <div id="modalMigrar" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
         <div class="bg-gray-800 p-8 rounded-3xl border border-blue-500 w-full max-w-md shadow-2xl">
-            <h3 class="text-xl font-bold text-blue-400 mb-6 uppercase text-center">Cambiar de Cuenta</h3>
+            <h3 class="text-xl font-bold text-blue-400 mb-6 uppercase text-center italic">Cambiar de Cuenta</h3>
             <input type="hidden" id="migrar_perfil_id">
-            <select id="migrar_nueva_madre" class="w-full bg-gray-700 p-4 rounded-xl mb-8 text-sm text-white outline-none"></select>
+            <select id="migrar_nueva_madre" class="w-full bg-gray-700 p-4 rounded-2xl mb-8 text-sm text-white border border-gray-600 outline-none"></select>
             <div class="flex gap-4">
-                <button onclick="cerrarModal()" class="flex-1 bg-gray-700 py-3 rounded-xl font-bold uppercase text-xs">Cerrar</button>
-                <button onclick="confirmarMigracion()" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold uppercase text-xs shadow-lg shadow-blue-900/40">Confirmar</button>
+                <button onclick="cerrarModal()" class="flex-1 bg-gray-700 py-4 rounded-2xl font-black uppercase text-xs">Cerrar</button>
+                <button onclick="confirmarMigracion()" class="flex-1 bg-blue-600 py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-blue-900/40">Confirmar</button>
             </div>
         </div>
     </div>
