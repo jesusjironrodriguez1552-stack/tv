@@ -1,73 +1,75 @@
-// caja.js - CONTROL FINANCIERO PROFESIONAL CVSE V6.0
-document.addEventListener('DOMContentLoaded', () => {
-    renderizarCaja();
-    
-    // Formulario para Gastos Manuales (Rembolsos, comisiones, etc)
-    document.getElementById('gastoManualForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const motivo = document.getElementById('g_motivo').value;
-        const monto = parseFloat(document.getElementById('g_monto').value);
+// caja.js - CONTROL FINANCIERO PROFESIONAL CVSE V6.5
 
-        // Insertamos usando los nombres exactos de tu tabla en la imagen
-        await _supabase.from('flujo_caja').insert([
-            { 
-                tipo: 'egreso', 
-                monto: monto, 
-                descripcion: `GASTO MANUAL: ${motivo.toUpperCase()}`,
-                fecha: new Date().toISOString() 
-            }
-        ]);
-        
+// 1. Escuchador para el formulario de Gastos Manuales
+document.getElementById('gastoManualForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const motivo = document.getElementById('g_motivo').value;
+    const monto = parseFloat(document.getElementById('g_monto').value);
+    const fecha = document.getElementById('g_fecha').value || new Date().toISOString();
+
+    const { error } = await _supabase.from('flujo_caja').insert([
+        { 
+            tipo: 'egreso', 
+            monto: monto, 
+            descripcion: `GASTO MANUAL: ${motivo.toUpperCase()}`,
+            fecha: fecha 
+        }
+    ]);
+
+    if (!error) {
         e.target.reset();
-        renderizarCaja();
-        if(typeof renderizarTodo === 'function') renderizarTodo();
-    });
+        // El cerebro (app.js) se encarga de refrescar todo
+        if (typeof renderizarTodo === 'function') await renderizarTodo();
+    } else {
+        alert("Error al registrar el gasto");
+    }
 });
 
 async function renderizarCaja() {
-    // Consultamos la tabla flujo_caja que mostraste en la imagen
-    const { data: flujo } = await _supabase.from('flujo_caja').select('*');
+    const { data: flujo, error } = await _supabase.from('flujo_caja').select('*');
     const lista = document.getElementById('listaFlujoMensual');
     const resumen = document.getElementById('resumenMensual');
+    const balanceHeader = document.getElementById('balance_monto'); // El cuadro negro del index
     
-    if(!lista || !resumen) return;
+    if (!lista || !resumen || error) return;
 
     const hoy = new Date();
     const mesActual = hoy.getMonth();
     const añoActual = hoy.getFullYear();
 
-    // 1. CAPITAL DE ARRASTRE (Lo que sobró antes del 1 de este mes)
+    // 1. CÁLCULO DE SALDO TOTAL (Para el Header)
+    const saldoTotalGlobal = flujo?.reduce((acc, f) => f.tipo === 'ingreso' ? acc + f.monto : acc - f.monto, 0) || 0;
+    
+    // Actualizar el header inmediatamente
+    if (balanceHeader) {
+        balanceHeader.innerText = `$${saldoTotalGlobal.toFixed(2)}`;
+    }
+
+    // 2. CAPITAL DE ARRASTRE (Saldo antes del mes actual)
     const saldoAnterior = flujo?.filter(f => {
         const fechaMov = new Date(f.fecha);
         return fechaMov < new Date(añoActual, mesActual, 1);
     }).reduce((acc, f) => f.tipo === 'ingreso' ? acc + f.monto : acc - f.monto, 0) || 0;
 
-    // 2. MOVIMIENTOS DEL MES ACTUAL (Diciembre o Enero según la fecha)
+    // 3. MOVIMIENTOS DEL MES ACTUAL
     const movimientosMes = flujo?.filter(f => {
         const fechaMov = new Date(f.fecha);
         return fechaMov.getMonth() === mesActual && fechaMov.getFullYear() === añoActual;
     }) || [];
 
     let ingresosMes = 0;
-    let gastosStock = 0;    // Inversión en Cuentas Madre
-    let gastosOperativos = 0; // Gastos manuales (como el 'rembolso' de tu imagen)
+    let gastosMes = 0;
 
     lista.innerHTML = '';
-    
-    // Ordenamos para que lo más nuevo (hoy) salga primero
-    movimientosMes.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)).reverse();
+    // Ordenar: Más reciente primero
+    movimientosMes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
     movimientosMes.forEach(item => {
         const esIngreso = item.tipo === 'ingreso';
-        if(esIngreso) {
-            ingresosMes += item.monto;
-        } else {
-            // Clasificación contable basada en tu descripción
-            if(item.descripcion.includes("GASTO MANUAL")) gastosOperativos += item.monto;
-            else gastosStock += item.monto;
-        }
+        if (esIngreso) ingresosMes += item.monto;
+        else gastosMes += item.monto;
 
-        const fechaLocal = new Date(item.fecha).toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit'});
+        const fechaLocal = new Date(item.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
         
         lista.innerHTML += `
             <tr class="hover:bg-gray-700/30 border-b border-gray-700/50 transition">
@@ -79,39 +81,26 @@ async function renderizarCaja() {
             </tr>`;
     });
 
-    const totalEgresos = gastosStock + gastosOperativos;
-    const gananciaNetaMes = ingresosMes - totalEgresos;
-    const dineroTotalEnMano = saldoAnterior + gananciaNetaMes;
+    const gananciaNetaMes = ingresosMes - gastosMes;
 
-    // 3. INTERFAZ DE RESULTADOS (Lo que necesitas para formalizar)
+    // 4. INTERFAZ DE RESULTADOS (Sección Caja)
     resumen.innerHTML = `
         <div class="bg-blue-600/10 border-2 border-blue-500 p-6 rounded-[2rem] shadow-2xl">
-            <span class="text-[10px] text-blue-400 font-black uppercase block">Caja Total Disponible</span>
-            <p class="text-3xl font-mono text-white font-black">$${dineroTotalEnMano.toFixed(2)}</p>
-            <p class="text-[9px] text-gray-500 mt-1">Saldo mes anterior: $${saldoAnterior.toFixed(2)}</p>
+            <span class="text-[10px] text-blue-400 font-black uppercase block">Caja Total Real</span>
+            <p class="text-3xl font-mono text-white font-black">$${saldoTotalGlobal.toFixed(2)}</p>
+            <p class="text-[9px] text-gray-500 mt-1 uppercase">Sobra de meses anteriores: $${saldoAnterior.toFixed(2)}</p>
         </div>
 
-        <div class="bg-gray-850 border border-gray-700 p-6 rounded-[2rem]">
-            <span class="text-[10px] text-green-500 font-black uppercase block">Ganancia Neta (Este Mes)</span>
-            <p class="text-3xl font-mono text-white font-black">$${gananciaNetaMes.toFixed(2)}</p>
-            <div class="flex justify-between text-[9px] mt-2 border-t border-gray-800 pt-2">
-                <span class="text-gray-400 uppercase">Ventas: $${ingresosMes.toFixed(2)}</span>
-                <span class="text-gray-400 uppercase">Egresos: $${totalEgresos.toFixed(2)}</span>
-            </div>
+        <div class="bg-gray-800 border border-gray-700 p-6 rounded-[2rem]">
+            <span class="text-[10px] text-green-500 font-black uppercase block">Ingresos del Mes</span>
+            <p class="text-3xl font-mono text-white font-black">$${ingresosMes.toFixed(2)}</p>
+            <p class="text-[9px] text-gray-400 mt-1 uppercase">Ventas brutas</p>
         </div>
 
-        <div class="bg-gray-850 border border-gray-700 p-6 rounded-[2rem]">
-            <span class="text-[10px] text-red-400 font-black uppercase block mb-2 italic">¿En qué gastaste?</span>
-            <div class="space-y-2">
-                <div class="flex justify-between text-[11px]">
-                    <span class="text-gray-400 uppercase">Inversión Stock:</span>
-                    <span class="font-mono text-red-400">-$${gastosStock.toFixed(2)}</span>
-                </div>
-                <div class="flex justify-between text-[11px]">
-                    <span class="text-gray-400 uppercase">Gastos Manuales:</span>
-                    <span class="font-mono text-red-400">-$${gastosOperativos.toFixed(2)}</span>
-                </div>
-            </div>
+        <div class="bg-gray-800 border border-gray-700 p-6 rounded-[2rem]">
+            <span class="text-[10px] text-red-500 font-black uppercase block">Gastos del Mes</span>
+            <p class="text-3xl font-mono text-white font-black">$${gastosMes.toFixed(2)}</p>
+            <p class="text-[9px] text-gray-400 mt-1 uppercase">Inversión y manuales</p>
         </div>
     `;
 }
