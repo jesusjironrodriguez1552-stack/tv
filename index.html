@@ -125,42 +125,101 @@
         <!-- SECCIÓN 3: BALANCE MENSUAL (CAJA) -->
         <!-- ============================================ -->
         <div id="seccion-caja" class="seccion-contenido hidden">
-            <div class="space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
-                <!-- RESUMEN DE INDICADORES -->
-                <div id="resumenMensual" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Los cuadros se generan dinámicamente desde caja.js -->
-                </div>
-
-                <!-- TABLA DE MOVIMIENTOS -->
-                <div class="bg-gray-800 rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
-                    <div class="p-6 border-b border-gray-700">
-                        <h2 class="text-xs font-black text-blue-400 uppercase tracking-widest italic">
-                            📊 Movimientos del Mes
-                        </h2>
+                <!-- FORMULARIO PARA REGISTRAR GASTOS -->
+                <aside class="lg:col-span-4">
+                    <div class="bg-gray-800 p-6 rounded-3xl border border-red-700 shadow-xl">
+                        <h2 class="text-xs font-black text-red-400 uppercase mb-6 tracking-widest border-b border-gray-700 pb-2 italic">📤 Registrar Gasto</h2>
+                        <form id="gastoForm" class="space-y-4">
+                            <input type="text" id="gasto_descripcion" placeholder="Descripción del gasto" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600 focus:border-red-500 text-white" required>
+                            
+                            <select id="gasto_categoria" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600 text-sm text-white">
+                                <option value="Operativo">💼 Operativo</option>
+                                <option value="Cuenta Madre">🖥️ Cuenta Madre</option>
+                                <option value="Marketing">📢 Marketing</option>
+                                <option value="Personal">👤 Personal</option>
+                                <option value="Otro">📋 Otro</option>
+                            </select>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] text-gray-500 font-black uppercase px-2 italic">Fecha</label>
+                                    <input type="date" id="gasto_fecha" class="w-full bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600 text-white" required>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] text-gray-500 font-black uppercase px-2 italic">Monto $</label>
+                                    <input type="number" id="gasto_monto" step="0.01" placeholder="0.00" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600 font-bold text-white" required>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-500 py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg text-white">Registrar Gasto</button>
+                        </form>
+                        
+                        <!-- TIP INFORMATIVO -->
+                        <div class="mt-4 p-3 bg-blue-900/20 border border-blue-500/30 rounded-xl">
+                            <p class="text-[9px] text-blue-300 uppercase font-bold">💡 Tip:</p>
+                            <p class="text-[10px] text-gray-300 mt-1">Los gastos de Cuentas Madre se registran automáticamente al crearlas.</p>
+                        </div>
                     </div>
+                </aside>
+
+                <!-- ÁREA DE VISUALIZACIÓN -->
+                <main class="lg:col-span-8 space-y-8">
                     
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm min-w-[600px]">
-                            <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]">
-                                <tr class="divide-x divide-gray-800">
-                                    <th class="p-5">Fecha</th>
-                                    <th class="p-5">Descripción</th>
-                                    <th class="p-5 text-right">Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody id="listaFlujoMensual" class="divide-y divide-gray-700">
-                                <!-- Los movimientos se generan dinámicamente desde caja.js -->
-                                <tr>
-                                    <td colspan="3" class="p-8 text-center text-gray-500">
-                                        ⏳ Cargando datos...
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <!-- SELECTOR DE MES Y RESUMEN -->
+                    <div class="bg-gray-800/50 border border-gray-700 p-4 rounded-2xl flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <button onclick="cambiarMesVista(-1)" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                                ◀
+                            </button>
+                            <div class="text-center">
+                                <p id="mesActualLabel" class="text-sm font-bold text-white uppercase">Enero 2026</p>
+                                <p class="text-[9px] text-gray-500">Mes actual</p>
+                            </div>
+                            <button onclick="cambiarMesVista(1)" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">
+                                ▶
+                            </button>
+                        </div>
+                        <button onclick="volverMesActual()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold transition">
+                            📅 Volver a Hoy
+                        </button>
                     </div>
-                </div>
 
+                    <!-- RESUMEN DE INDICADORES -->
+                    <div id="resumenMensual" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Los cuadros se generan dinámicamente desde caja.js -->
+                    </div>
+
+                    <!-- TABLA DE MOVIMIENTOS -->
+                    <div class="bg-gray-800 rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
+                        <div class="p-6 border-b border-gray-700">
+                            <h2 class="text-xs font-black text-blue-400 uppercase tracking-widest italic">
+                                📊 Movimientos del Mes
+                            </h2>
+                        </div>
+                        
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm min-w-[600px]">
+                                <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]">
+                                    <tr class="divide-x divide-gray-800">
+                                        <th class="p-5">Fecha</th>
+                                        <th class="p-5">Descripción</th>
+                                        <th class="p-5 text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="listaFlujoMensual" class="divide-y divide-gray-700">
+                                    <tr>
+                                        <td colspan="3" class="p-8 text-center text-gray-500">
+                                            ⏳ Cargando datos...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </main>
             </div>
         </div>
 
