@@ -137,8 +137,13 @@ async function renderizarClientes() {
                     ${p.whatsapp ? 
                         `<button onclick="enviarRecordatorio('${p.nombre_cliente}', '${p.whatsapp}', '${cuentaMadre?.plataforma || 'tu servicio'}', ${diasRestantes})" 
                             class="p-2 bg-green-600/20 hover:bg-green-600 text-white rounded-lg transition tooltip" 
-                            title="Enviar recordatorio por WhatsApp">
+                            title="Enviar recordatorio de vencimiento">
                             📲
+                        </button>
+                        <button onclick="enviarDatosCuenta('${p.nombre_cliente}', '${p.whatsapp}', '${cuentaMadre?.plataforma || 'tu servicio'}', '${cuentaMadre?.email_cuenta || ''}', '${cuentaMadre?.password_cuenta || ''}', '${p.perfil_asignado}')" 
+                            class="p-2 bg-cyan-600/20 hover:bg-cyan-600 text-white rounded-lg transition tooltip" 
+                            title="Enviar datos de acceso">
+                            🔑
                         </button>` 
                         : ''
                     }
@@ -284,6 +289,45 @@ window.enviarRecordatorio = (nombre, whatsapp, plataforma, diasRestantes) => {
     window.open(url, '_blank');
     
     console.log('✅ WhatsApp abierto');
+};
+
+// Enviar datos de acceso a la cuenta
+window.enviarDatosCuenta = (nombre, whatsapp, plataforma, email, password, perfil) => {
+    console.log(`🔑 Enviando datos de cuenta a ${nombre}...`);
+    
+    if (!whatsapp || whatsapp === 'undefined' || whatsapp === 'null') {
+        alert("⚠️ Este cliente no tiene número de WhatsApp registrado");
+        return;
+    }
+
+    if (!email || !password) {
+        alert("⚠️ Esta cuenta no tiene datos de acceso completos");
+        return;
+    }
+
+    // Limpiar número (solo dígitos)
+    const numeroLimpio = whatsapp.replace(/\D/g, '');
+    
+    // Crear mensaje con los datos de acceso
+    let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
+    mensaje += `Aquí están los datos de acceso a tu cuenta de *${plataforma}* 🔐\n\n`;
+    mensaje += `━━━━━━━━━━━━━━━\n`;
+    mensaje += `📧 *Email:* ${email}\n`;
+    mensaje += `🔒 *Contraseña:* ${password}\n`;
+    mensaje += `👤 *Tu Perfil:* ${perfil}\n`;
+    mensaje += `━━━━━━━━━━━━━━━\n\n`;
+    mensaje += `⚠️ *IMPORTANTE:*\n`;
+    mensaje += `• No compartas estos datos con nadie\n`;
+    mensaje += `• No cambies la contraseña\n`;
+    mensaje += `• Usa solo tu perfil asignado\n\n`;
+    mensaje += `¿Necesitas ayuda para entrar? Escríbenos 😊\n\n`;
+    mensaje += `${CONFIG_NEGOCIO.despedida}`;
+
+    // Abrir WhatsApp
+    const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+    
+    console.log('✅ Datos de cuenta enviados por WhatsApp');
 };
 
 // Renovar cliente (extender vencimiento)
