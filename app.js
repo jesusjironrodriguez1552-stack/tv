@@ -1,71 +1,85 @@
-// app.js - LÓGICA CENTRAL CVSE V6.5
+// app.js - LÓGICA CENTRAL Y GESTIÓN DE CLIENTES
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar funciones base
     configurarTabs();
     renderizarTodo();
 
-    // Formulario de Registro de Ventas
-    document.getElementById('perfilForm')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const nombre = document.getElementById('nombre_cliente').value;
-        const whatsapp = document.getElementById('whatsapp').value;
-        const madreId = document.getElementById('cuenta_madre_id').value;
-        const perfil = document.getElementById('perfil_asignado').value;
-        const vencimiento = document.getElementById('vencimiento_cliente').value;
-        const monto = parseFloat(document.getElementById('monto').value);
+    // FORMULARIO DE REGISTRO DE VENTAS (CLIENTES)
+    const perfilForm = document.getElementById('perfilForm');
+    if (perfilForm) {
+        perfilForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const nombre = document.getElementById('nombre_cliente').value;
+            const whatsapp = document.getElementById('whatsapp').value;
+            const madreId = document.getElementById('cuenta_madre_id').value;
+            const perfil = document.getElementById('perfil_asignado').value;
+            const vencimiento = document.getElementById('vencimiento_cliente').value;
+            const monto = parseFloat(document.getElementById('monto').value);
 
-        // 1. Guardar Venta en Perfiles
-        const { error: errPerfil } = await _supabase.from('perfiles_clientes').insert([{
-            nombre_cliente: nombre,
-            whatsapp: whatsapp,
-            cuenta_madre_id: madreId,
-            perfil_asignado: perfil,
-            vencimiento: vencimiento,
-            monto: monto
-        }]);
+            // 1. Guardar Venta en tabla 'perfiles_clientes'
+            const { error: errPerfil } = await _supabase.from('perfiles_clientes').insert([{
+                nombre_cliente: nombre,
+                whatsapp: whatsapp,
+                cuenta_madre_id: madreId,
+                perfil_asignado: perfil,
+                vencimiento: vencimiento,
+                monto: monto
+            }]);
 
-        if (errPerfil) return alert("Error al guardar venta");
+            if (errPerfil) {
+                console.error("Error al guardar perfil:", errPerfil);
+                return alert("Error al guardar venta.");
+            }
 
-        // 2. Registrar Ingreso en Flujo de Caja
-        await _supabase.from('flujo_caja').insert([{
-            tipo: 'ingreso',
-            monto: monto,
-            descripcion: `Venta Perfil: ${nombre} (${perfil})`,
-            fecha: new Date().toISOString()
-        }]);
+            // 2. Registrar Ingreso en tabla 'flujo_caja'
+            await _supabase.from('flujo_caja').insert([{
+                tipo: 'ingreso',
+                monto: monto,
+                descripcion: `Venta Perfil: ${nombre} (${perfil})`,
+                fecha: new Date().toISOString()
+            }]);
 
-        e.target.reset();
-        renderizarTodo();
-    });
+            e.target.reset();
+            renderizarTodo();
+            alert("✅ Venta registrada con éxito.");
+        });
+    }
 });
 
-// RENDERIZADO PRINCIPAL
+// --- RENDERIZADO PRINCIPAL ---
 async function renderizarTodo() {
     await cargarSelectMadres();
     await renderizarTablaClientes();
+    actualizarBalanceGlobal();
+    
+    // Llamar a funciones de otros archivos si existen
     if (typeof renderizarMadres === 'function') renderizarMadres();
     if (typeof renderizarCaja === 'function') renderizarCaja();
-    actualizarBalanceGlobal();
 }
 
+// --- GESTIÓN DE TABLA DE CLIENTES ---
 async function renderizarTablaClientes() {
-    const { data: perfiles } = await _supabase.from('perfiles_clientes').select('*, cuentas_madre(plataforma, email)');
+    const { data: perfiles, error } = await _supabase
+        .from('perfiles_clientes')
+        .select('*, cuentas_madre(plataforma, email)');
+    
     const tabla = document.getElementById('tablaPerfiles');
-    if (!tabla) return;
+    if (!tabla || error) return;
     tabla.innerHTML = '';
 
-    perfiles?.forEach(item => {
+    perfiles.forEach(item => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-gray-700/30 transition border-b border-gray-700/50";
         
         tr.innerHTML = `
             <td class="p-5">
                 <p class="font-bold text-white uppercase">${item.nombre_cliente}</p>
-                <p class="text-[10px] text-gray-500 font-mono">${item.whatsapp || 'Sin WP'}</p>
+                <p class="text-[10px] text-gray-500 font-mono">${item.whatsapp || 'Sin WhatsApp'}</p>
             </td>
             <td class="p-5 text-xs">
-                <p class="text-blue-400 font-black italic uppercase">${item.cuentas_madre?.plataforma || 'S/N'}</p>
-                <p class="text-gray-400 font-bold tracking-tighter uppercase">${item.perfil_asignado}</p>
+                <p class="text-blue-400 font-black italic uppercase">${item.cuentas_madre?.plataforma || 'Sin Cuenta'}</p>
+                <p class="text-gray-400 font-bold uppercase tracking-tighter">${item.perfil_asignado}</p>
             </td>
             <td class="p-5 text-center">
                 <span class="bg-gray-900 px-4 py-2 rounded-xl text-[10px] font-black border border-gray-700 uppercase">
@@ -108,14 +122,14 @@ async function renderizarTablaClientes() {
     });
 }
 
-// FUNCIONES DE APOYO
+// --- UTILIDADES GLOBALES ---
 async function cargarSelectMadres() {
-    const { data } = await _supabase.from('cuentas_madre').select('*');
+    const { data } = await _supabase.from('cuentas_madre').select('id, plataforma, email');
     const select = document.getElementById('cuenta_madre_id');
     const selectMigrar = document.getElementById('migrar_nueva_madre');
     if (!select) return;
 
-    const opciones = data?.map(m => `<option value="${m.id}">${m.plataforma} - ${m.email}</option>`).join('');
+    const opciones = data?.map(m => `<option value="${m.id}">${m.plataforma} (${m.email})</option>`).join('');
     select.innerHTML = `<option value="">Seleccionar Cuenta...</option>${opciones}`;
     if (selectMigrar) selectMigrar.innerHTML = opciones;
 }
@@ -127,13 +141,29 @@ async function actualizarBalanceGlobal() {
     if (el) el.innerText = `$${total.toFixed(2)}`;
 }
 
-// UTILIDADES
 function cambiarSeccion(id) {
     document.querySelectorAll('.seccion-contenido').forEach(s => s.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
+    const seccion = document.getElementById(id);
+    if (seccion) seccion.classList.remove('hidden');
     
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active', 'text-blue-500'));
-    event.target.classList.add('tab-active');
+    // Estilo de botones de navegación
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+    // Encontrar el botón que corresponde a la sección
+    const btnId = id.replace('seccion-', 'btn-tab-');
+    const btn = document.getElementById(btnId);
+    if (btn) btn.classList.add('tab-active');
+}
+
+function configurarTabs() {
+    // Esta función vincula los clics de navegación con la lógica de secciones
+    const botones = document.querySelectorAll('nav button');
+    botones.forEach(boton => {
+        boton.onclick = (e) => {
+            const idCompleto = e.currentTarget.id; // btn-tab-clientes
+            const seccionId = idCompleto.replace('btn-tab-', 'seccion-');
+            cambiarSeccion(seccionId);
+        };
+    });
 }
 
 function filtrarTabla() {
@@ -146,18 +176,38 @@ function filtrarTabla() {
 }
 
 async function eliminarPerfil(id) {
-    if (confirm('¿Eliminar este cliente definitivamente?')) {
+    if (confirm('¿Eliminar cliente definitivamente?')) {
         await _supabase.from('perfiles_clientes').delete().eq('id', id);
         renderizarTodo();
     }
 }
 
-function copiarDatos(email, plataforma) {
-    navigator.clipboard.writeText(`Cuenta: ${plataforma}\nCorreo: ${email}`);
-    alert("Datos copiados al portapapeles");
+function enviarWhatsApp(numero, cliente, vencimiento) {
+    const mensaje = `Hola *${cliente}*, 👋 te saludamos de CVSE. Tu perfil vence el día *${vencimiento}*. ¿Deseas renovar?`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
-function enviarWhatsApp(numero, cliente, vencimiento) {
-    const msg = `Hola ${cliente}, te recordamos que tu cuenta vence el ${vencimiento}.`;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');
+function copiarDatos(email, plataforma) {
+    const texto = `📺 *DATOS DE ACCESO*\nPlataforma: ${plataforma}\nCorreo: ${email}`;
+    navigator.clipboard.writeText(texto);
+    alert("Copiado: " + plataforma);
+}
+
+// Funciones para el Modal de Migración
+function abrirModalMigrar(id) {
+    document.getElementById('migrar_perfil_id').value = id;
+    document.getElementById('modalMigrar').classList.remove('hidden');
+}
+
+function cerrarModal() {
+    document.getElementById('modalMigrar').classList.add('hidden');
+}
+
+async function confirmarMigracion() {
+    const id = document.getElementById('migrar_perfil_id').value;
+    const nuevaMadre = document.getElementById('migrar_nueva_madre').value;
+    
+    await _supabase.from('perfiles_clientes').update({ cuenta_madre_id: nuevaMadre }).eq('id', id);
+    cerrarModal();
+    renderizarTodo();
 }
