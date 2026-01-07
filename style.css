@@ -1,0 +1,84 @@
+/* style.css - Diseño CVSE V6.5 */
+
+/* Configuración General */
+:root {
+    --bg-dark: #111827;
+    --bg-card: #1f2937;
+    --accent-blue: #3b82f6;
+    --accent-yellow: #eab308;
+    --accent-red: #ef4444;
+    --text-gray: #9ca3af;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: white;
+}
+
+/* Contenedores y Tarjetas */
+.seccion-contenido {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.bg-gray-850 { background-color: #1a202c; }
+
+/* Navegación */
+.tab-active { 
+    border-bottom: 4px solid var(--accent-blue); 
+    color: var(--accent-blue); 
+    font-weight: bold; 
+}
+
+/* Estilo de Botones de Acción con Leyenda */
+.btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.action-btn-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 60px;
+}
+
+.action-btn {
+    padding: 8px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.btn-hint {
+    font-size: 8px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-gray);
+    text-align: center;
+    pointer-events: none;
+}
+
+/* Variantes de Botones */
+.btn-wa { background: #15803d20; color: #22c55e; border-color: #22c55e30; }
+.btn-wa:hover { background: #22c55e; color: white; }
+
+.btn-datos { background: #1e3a8a20; color: #3b82f6; border-color: #3b82f630; }
+.btn-datos:hover { background: #3b82f6; color: white; }
+
+.btn-migrar { background: #713f1220; color: #eab308; border-color: #eab30830; }
+.btn-migrar:hover { background: #eab308; color: black; }
+
+.btn-delete { background: #7f1d1d20; color: #ef4444; border-color: #ef444430; }
+.btn-delete:hover { background: #ef4444; color: white; }
+
+/* Scrollbars */
+.no-scrollbar::-webkit-scrollbar { display: none; }
