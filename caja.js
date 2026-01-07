@@ -178,11 +178,23 @@ async function renderizarCaja() {
     // 9. FILTRAR MOVIMIENTOS DEL MES ACTUAL
     const movimientosMes = flujo.filter(f => {
         const fechaMov = new Date(f.fecha);
-        return fechaMov.getMonth() === mesActual && 
-               fechaMov.getFullYear() === añoActual;
+        const mesMovimiento = fechaMov.getMonth();
+        const añoMovimiento = fechaMov.getFullYear();
+        
+        console.log(`🔍 Comparando: ${f.descripcion}`, {
+            fechaOriginal: f.fecha,
+            mesMov: mesMovimiento + 1,
+            añoMov: añoMovimiento,
+            mesVista: mesActual + 1,
+            añoVista: añoActual,
+            coincide: mesMovimiento === mesActual && añoMovimiento === añoActual
+        });
+        
+        return mesMovimiento === mesActual && añoMovimiento === añoActual;
     });
 
     console.log('📊 Movimientos del mes actual:', movimientosMes.length);
+    console.log('📋 Lista completa filtrada:', movimientosMes);
 
     debugPanel.innerHTML += `<br>💼 Movimientos de ${nombreMes} ${añoActual}: <strong>${movimientosMes.length}</strong>`;
 
@@ -218,9 +230,12 @@ async function renderizarCaja() {
                 </td>
             </tr>
         `;
+        console.log('⚠️ No hay movimientos para mostrar en este mes');
     } else {
+        console.log(`📝 Renderizando ${movimientosMes.length} movimientos...`);
+        
         // Ya están ordenados por fecha descendente desde Supabase
-        movimientosMes.forEach(item => {
+        movimientosMes.forEach((item, index) => {
             const esIngreso = item.tipo === 'ingreso';
             const montoNum = parseFloat(item.monto) || 0;
             
@@ -231,19 +246,25 @@ async function renderizarCaja() {
                 year: '2-digit'
             });
             
+            console.log(`  ${index + 1}. ${fechaLocal} - ${item.descripcion} - ${esIngreso ? '+' : '-'}${montoNum}`);
+            
             // Crear fila
-            lista.innerHTML += `
+            const filaHTML = `
                 <tr class="hover:bg-gray-700/30 border-b border-gray-800 transition">
                     <td class="p-4 text-[10px] font-mono text-gray-400">${fechaLocal}</td>
                     <td class="p-4 text-xs font-bold uppercase text-white">
                         ${item.descripcion || 'Sin descripción'}
                     </td>
                     <td class="p-4 text-right font-black font-mono ${esIngreso ? 'text-green-400' : 'text-red-400'}">
-                        ${esIngreso ? '+' : '-'}$${montoNum.toFixed(2)}
+                        ${esIngreso ? '+' : '-'}${montoNum.toFixed(2)}
                     </td>
                 </tr>
             `;
+            
+            lista.innerHTML += filaHTML;
         });
+        
+        console.log('✅ Tabla renderizada con todos los movimientos');
     }
 
     // 12. RENDERIZAR CUADROS DE RESUMEN CON GANANCIAS NETAS
