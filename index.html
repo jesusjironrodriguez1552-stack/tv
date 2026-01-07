@@ -13,6 +13,7 @@
 <body class="p-2 md:p-6 bg-gray-900 text-white">
 
     <div class="max-w-7xl mx-auto">
+        <!-- HEADER -->
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-800 pb-6">
             <div>
                 <h1 class="text-3xl font-black text-blue-500 tracking-tighter uppercase italic">CVSE V6.5</h1>
@@ -26,12 +27,16 @@
             </div>
         </header>
 
+        <!-- NAVEGACIÓN -->
         <nav class="flex gap-8 mb-8 border-b border-gray-800 overflow-x-auto no-scrollbar">
             <button onclick="cambiarSeccion('seccion-clientes')" class="tab-btn pb-4 text-sm uppercase tracking-widest whitespace-nowrap text-blue-400 border-b-2 border-blue-400">👥 Clientes</button>
             <button onclick="cambiarSeccion('seccion-madres')" class="tab-btn pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap">🖥️ Cuentas Madre</button>
             <button onclick="cambiarSeccion('seccion-caja')" class="tab-btn pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap">💰 Balance Mensual</button>
         </nav>
 
+        <!-- ============================================ -->
+        <!-- SECCIÓN 1: CLIENTES -->
+        <!-- ============================================ -->
         <div id="seccion-clientes" class="seccion-contenido">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <aside class="lg:col-span-4">
@@ -75,13 +80,16 @@
                                 </tr>
                             </thead>
                             <tbody id="tablaPerfiles" class="divide-y divide-gray-700">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </main>
             </div>
         </div>
 
+        <!-- ============================================ -->
+        <!-- SECCIÓN 2: CUENTAS MADRE -->
+        <!-- ============================================ -->
         <div id="seccion-madres" class="seccion-contenido hidden">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <aside class="lg:col-span-4">
@@ -108,15 +116,59 @@
                 </aside>
                 <main class="lg:col-span-8">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="gridMadresDetalle">
-                        </div>
+                    </div>
                 </main>
             </div>
         </div>
 
+        <!-- ============================================ -->
+        <!-- SECCIÓN 3: BALANCE MENSUAL (CAJA) -->
+        <!-- ============================================ -->
         <div id="seccion-caja" class="seccion-contenido hidden">
+            <div class="space-y-8">
+                
+                <!-- RESUMEN DE INDICADORES -->
+                <div id="resumenMensual" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Los cuadros se generan dinámicamente desde caja.js -->
+                </div>
+
+                <!-- TABLA DE MOVIMIENTOS -->
+                <div class="bg-gray-800 rounded-3xl border border-gray-700 shadow-2xl overflow-hidden">
+                    <div class="p-6 border-b border-gray-700">
+                        <h2 class="text-xs font-black text-blue-400 uppercase tracking-widest italic">
+                            📊 Movimientos del Mes
+                        </h2>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm min-w-[600px]">
+                            <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]">
+                                <tr class="divide-x divide-gray-800">
+                                    <th class="p-5">Fecha</th>
+                                    <th class="p-5">Descripción</th>
+                                    <th class="p-5 text-right">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaFlujoMensual" class="divide-y divide-gray-700">
+                                <!-- Los movimientos se generan dinámicamente desde caja.js -->
+                                <tr>
+                                    <td colspan="3" class="p-8 text-center text-gray-500">
+                                        ⏳ Cargando datos...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
+        </div>
+
     </div>
 
+    <!-- ============================================ -->
+    <!-- MODAL DE MIGRACIÓN -->
+    <!-- ============================================ -->
     <div id="modalMigrar" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
         <div class="bg-gray-800 p-8 rounded-3xl border border-blue-500 w-full max-w-md shadow-2xl text-center">
             <h3 class="text-xl font-black text-blue-400 mb-6 uppercase italic">Cambiar de Cuenta</h3>
@@ -129,12 +181,13 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
+    <!-- SCRIPTS -->
+    <!-- ============================================ -->
     <script src="config.js"></script>
-    
     <script src="madres.js"></script>
     <script src="clientes.js"></script>
     <script src="caja.js"></script>
-    
     <script src="app.js"></script>
 
 </body>
