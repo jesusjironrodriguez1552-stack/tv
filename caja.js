@@ -166,11 +166,11 @@ async function renderizarCaja() {
         }
     });
     
-    console.log('💰 Saldo total global (histórico):', saldoTotalGlobal);
+    console.log('💰 Saldo total global (histórico):', saldoTotalGlobal.toFixed(2));
     
     // Actualizar el balance en el header
     if (balanceHeader) {
-        balanceHeader.innerText = `$${saldoTotalGlobal.toFixed(2)}`;
+        balanceHeader.innerText = `${saldoTotalGlobal.toFixed(2)}`;
         balanceHeader.className = saldoTotalGlobal >= 0 
             ? 'text-3xl font-mono text-green-400 font-bold' 
             : 'text-3xl font-mono text-red-400 font-bold';
@@ -178,16 +178,20 @@ async function renderizarCaja() {
 
     // 9. FILTRAR MOVIMIENTOS DEL MES ACTUAL
     const movimientosMes = flujo.filter(f => {
-        const fechaMov = new Date(f.fecha);
-        const mesMovimiento = fechaMov.getMonth();
-        const añoMovimiento = fechaMov.getFullYear();
+        // Extraer solo la parte de fecha (YYYY-MM-DD) sin importar si tiene hora
+        const fechaStr = f.fecha.toString().split('T')[0];
+        const [año, mes, dia] = fechaStr.split('-').map(Number);
         
-        console.log(`🔍 Comparando: ${f.descripcion}`, {
-            fechaOriginal: f.fecha,
-            mesMov: mesMovimiento + 1,
-            añoMov: añoMovimiento,
-            mesVista: mesActual + 1,
-            añoVista: añoActual,
+        // Crear fecha local sin conversión UTC
+        const fechaLocal = new Date(año, mes - 1, dia);
+        const mesMovimiento = fechaLocal.getMonth();
+        const añoMovimiento = fechaLocal.getFullYear();
+        
+        console.log(`🔍 ${f.descripcion}:`, {
+            fechaDB: f.fecha,
+            fechaExtraida: fechaStr,
+            mesDB: mes,
+            mesFiltro: mesActual + 1,
             coincide: mesMovimiento === mesActual && añoMovimiento === añoActual
         });
         
