@@ -13,6 +13,19 @@ const CONFIG_NEGOCIO = {
 };
 
 // ============================================
+// FUNCIÓN FALLBACK DE FECHA (por si utilidades.js no carga)
+// ============================================
+function obtenerFechaLocalFallback() {
+    const ahora = new Date();
+    const año = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    const fechaLocal = `${año}-${mes}-${dia}`;
+    console.log('⚠️ Usando fecha fallback:', fechaLocal);
+    return fechaLocal;
+}
+
+// ============================================
 // FUNCIÓN PRINCIPAL DE RENDERIZADO
 // ============================================
 async function renderizarClientes() {
@@ -379,11 +392,15 @@ window.renovarCliente = async (id, nombre) => {
         }
 
         // Registrar ingreso en caja
+        const fechaHoy = window.obtenerFechaLocal ? window.obtenerFechaLocal() : obtenerFechaLocalFallback();
+        
+        console.log('📅 Registrando renovación con fecha:', fechaHoy);
+        
         await _supabase.from('flujo_caja').insert([{
             tipo: 'ingreso',
             monto: parseFloat(monto),
             descripcion: `Renovación: ${nombre}`,
-            fecha: obtenerFechaLocal() // Usar fecha local correcta
+            fecha: fechaHoy // Usar fecha local correcta
         }]);
 
         alert(`✅ Cliente renovado exitosamente\n\nNueva fecha: ${nuevaFecha.toLocaleDateString('es-ES')}\nMonto: $${parseFloat(monto).toFixed(2)}`);
