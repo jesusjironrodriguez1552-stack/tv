@@ -13,6 +13,17 @@ const CONFIG_NEGOCIO = {
 };
 
 // ============================================
+// FUNCIÓN HELPER: OBTENER FECHA LOCAL
+// ============================================
+function obtenerFechaLocal() {
+    const ahora = new Date();
+    const año = ahora.getFullYear();
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    return `${año}-${mes}-${dia}`;
+}
+
+// ============================================
 // FUNCIÓN PRINCIPAL DE RENDERIZADO
 // ============================================
 async function renderizarClientes() {
@@ -227,7 +238,7 @@ if (formPerfil) {
                     tipo: 'ingreso',
                     monto: montoVenta,
                     descripcion: `Venta de perfil: ${nombreCliente}`,
-                    fecha: new Date().toISOString().split('T')[0] // Solo fecha YYYY-MM-DD
+                    fecha: new Date().toISOString().split('T')[0] // Solo fecha: YYYY-MM-DD
                 }]);
 
             if (errorCaja) {
@@ -383,7 +394,7 @@ window.renovarCliente = async (id, nombre) => {
             tipo: 'ingreso',
             monto: parseFloat(monto),
             descripcion: `Renovación: ${nombre}`,
-            fecha: new Date().toISOString().split('T')[0]
+            fecha: obtenerFechaLocal() // Usar fecha local correcta
         }]);
 
         alert(`✅ Cliente renovado exitosamente\n\nNueva fecha: ${nuevaFecha.toLocaleDateString('es-ES')}\nMonto: $${parseFloat(monto).toFixed(2)}`);
