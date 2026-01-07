@@ -1,4 +1,4 @@
-// clientes.js - ESPECIALISTA EN GESTIÓN DE CLIENTES Y VENTAS
+// clientes.js - ESPECIALISTA EN GESTIÓN DE CLIENTES Y VENTAS  
 
 async function renderizarClientes() {
     // 1. Obtener datos con la unión de la cuenta madre
