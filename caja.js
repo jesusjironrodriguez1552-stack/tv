@@ -291,4 +291,77 @@ if (document.readyState === 'loading') {
     console.log('🎯 DOM ya está listo - renderizarCaja() disponible');
 }
 
+// ============================================
+// FORMULARIO DE REGISTRO DE GASTOS
+// ============================================
+const formGasto = document.getElementById('gastoForm');
+if (formGasto) {
+    // Auto-completar fecha con hoy
+    const inputFecha = document.getElementById('gasto_fecha');
+    if (inputFecha) {
+        inputFecha.value = new Date().toISOString().split('T')[0];
+    }
+
+    formGasto.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        console.log('📝 Procesando nuevo gasto...');
+        
+        const descripcion = document.getElementById('gasto_descripcion').value.trim();
+        const categoria = document.getElementById('gasto_categoria').value;
+        const fecha = document.getElementById('gasto_fecha').value;
+        const monto = parseFloat(document.getElementById('gasto_monto').value);
+
+        // Validaciones
+        if (!descripcion || !fecha || !monto) {
+            alert('⚠️ Por favor completa todos los campos');
+            return;
+        }
+
+        if (monto <= 0) {
+            alert('⚠️ El monto debe ser mayor a 0');
+            return;
+        }
+
+        try {
+            // Registrar el gasto en flujo de caja
+            const { error } = await _supabase
+                .from('flujo_caja')
+                .insert([{
+                    tipo: 'gasto',
+                    monto: monto,
+                    descripcion: `${categoria}: ${descripcion}`,
+                    fecha: fecha
+                }]);
+
+            if (error) {
+                console.error('❌ Error al guardar gasto:', error);
+                alert(`❌ Error al registrar gasto: ${error.message}`);
+                return;
+            }
+
+            console.log('✅ Gasto registrado');
+
+            // Limpiar formulario
+            e.target.reset();
+            // Restaurar fecha de hoy
+            if (inputFecha) {
+                inputFecha.value = new Date().toISOString().split('T')[0];
+            }
+            
+            alert(`✅ ¡Gasto registrado exitosamente!\n\nDescripción: ${descripcion}\nMonto: ${monto.toFixed(2)}`);
+            
+            // Actualizar toda la interfaz
+            if (typeof renderizarTodo === 'function') {
+                await renderizarTodo();
+            }
+
+            console.log('✅ Gasto completado exitosamente');
+
+        } catch (err) {
+            console.error('❌ Error inesperado:', err);
+            alert('❌ Ocurrió un error inesperado. Revisa la consola.');
+        }
+    });
+}
+
 console.log('✅ Módulo caja.js inicializado correctamente');
