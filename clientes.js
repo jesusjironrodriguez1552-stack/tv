@@ -106,7 +106,7 @@ window.enviarRecordatorio = (nombre, wa, plataforma, dias) => {
     if(!wa || wa === 'undefined') return alert("No hay número de WhatsApp registrado");
     
     const saludo = dias <= 0 ? "ha vencido HOY" : `vence en ${dias} días`;
-    const msg = `Hola *${nombre}*, te saluda CVSE. Te recordamos que tu servicio de *${plataforma}* ${saludo}. ¿Deseas renovar para mantener tu mismo perfil?`;
+    const msg = `Hola *${nombre}*, te saluda Streaming Store. Te recordamos que tu servicio de *${plataforma}* ${saludo}. ¿Deseas renovar para mantener tu mismo perfil?`;
     
     window.open(`https://wa.me/${wa.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
 };
