@@ -70,7 +70,7 @@ async function renderizarCaja() {
 
     console.log('✅ Supabase detectado, consultando tabla flujo_caja...');
 
-    // 4. OBTENER DATOS DE SUPABASE
+    // 4. OBTENER DATOS DE SUPABASE - ORDENADOS POR FECHA DESCENDENTE
     const { data: flujo, error } = await _supabase
         .from('flujo_caja')
         .select('*')
@@ -84,6 +84,7 @@ async function renderizarCaja() {
     }
 
     console.log('📦 Datos recibidos de Supabase:', flujo);
+    console.log('📊 Total de registros:', flujo?.length || 0);
 
     // 5. VALIDAR DATOS
     if (!flujo || flujo.length === 0) {
