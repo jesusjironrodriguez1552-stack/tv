@@ -159,7 +159,8 @@ async function renderizarCaja() {
         const monto = parseFloat(f.monto) || 0;
         if (f.tipo === 'ingreso') {
             saldoTotalGlobal += monto;
-        } else if (f.tipo === 'gasto') {
+        } else if (f.tipo === 'egreso' || f.tipo === 'gasto') {
+            // Acepta tanto 'egreso' como 'gasto' para compatibilidad
             saldoTotalGlobal -= monto;
         }
     });
@@ -194,7 +195,8 @@ async function renderizarCaja() {
         
         if (item.tipo === 'ingreso') {
             ingresosMes += montoNum;
-        } else if (item.tipo === 'gasto') {
+        } else if (item.tipo === 'egreso' || item.tipo === 'gasto') {
+            // Acepta tanto 'egreso' como 'gasto' para compatibilidad
             gastosMes += montoNum;
         }
     });
@@ -354,10 +356,11 @@ if (formGasto) {
 
         try {
             // Registrar el gasto en flujo de caja
+            // IMPORTANTE: Algunos sistemas usan 'egreso' en lugar de 'gasto'
             const { error } = await _supabase
                 .from('flujo_caja')
                 .insert([{
-                    tipo: 'gasto',
+                    tipo: 'egreso', // Cambiado de 'gasto' a 'egreso'
                     monto: monto,
                     descripcion: `${categoria}: ${descripcion}`,
                     fecha: fecha
