@@ -1,205 +1,163 @@
-const SUPABASE_URL = 'https://mdetlqvfdgtfatufdkht.supabase.co'; 
-const SUPABASE_KEY = 'sb_publishable_TV9x9pfZw_vYR3-lF7NCIQ_ybSLs5Fh'; 
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let tablaPerfiles, selectMadres, gridMadresDetalle, migrarMadreSelect;
-
+// app.js - LÓGICA CENTRAL CVSE V6.5
 document.addEventListener('DOMContentLoaded', () => {
-    tablaPerfiles = document.getElementById('tablaPerfiles');
-    selectMadres = document.getElementById('cuenta_madre_id');
-    gridMadresDetalle = document.getElementById('gridMadresDetalle');
-    migrarMadreSelect = document.getElementById('migrar_nueva_madre');
-    init();
+    configurarTabs();
+    renderizarTodo();
+
+    // Formulario de Registro de Ventas
+    document.getElementById('perfilForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const nombre = document.getElementById('nombre_cliente').value;
+        const whatsapp = document.getElementById('whatsapp').value;
+        const madreId = document.getElementById('cuenta_madre_id').value;
+        const perfil = document.getElementById('perfil_asignado').value;
+        const vencimiento = document.getElementById('vencimiento_cliente').value;
+        const monto = parseFloat(document.getElementById('monto').value);
+
+        // 1. Guardar Venta en Perfiles
+        const { error: errPerfil } = await _supabase.from('perfiles_clientes').insert([{
+            nombre_cliente: nombre,
+            whatsapp: whatsapp,
+            cuenta_madre_id: madreId,
+            perfil_asignado: perfil,
+            vencimiento: vencimiento,
+            monto: monto
+        }]);
+
+        if (errPerfil) return alert("Error al guardar venta");
+
+        // 2. Registrar Ingreso en Flujo de Caja
+        await _supabase.from('flujo_caja').insert([{
+            tipo: 'ingreso',
+            monto: monto,
+            descripcion: `Venta Perfil: ${nombre} (${perfil})`,
+            fecha: new Date().toISOString()
+        }]);
+
+        e.target.reset();
+        renderizarTodo();
+    });
 });
 
-window.cambiarSeccion = function(idSeccion) {
-    document.querySelectorAll('.seccion-contenido').forEach(s => s.classList.add('hidden'));
-    document.getElementById(idSeccion).classList.remove('hidden');
-    const btnC = document.getElementById('btn-tab-clientes');
-    const btnM = document.getElementById('btn-tab-madres');
-    if(idSeccion === 'seccion-clientes') {
-        btnC.className = 'tab-active pb-4 text-sm uppercase tracking-widest whitespace-nowrap';
-        btnM.className = 'pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap';
-    } else {
-        btnM.className = 'tab-active pb-4 text-sm uppercase tracking-widest whitespace-nowrap';
-        btnC.className = 'pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap';
-    }
-};
-
-// --- REENVIAR DATOS (TUS DATOS SOLICITADOS) ---
-window.msgRecordarDatos = (nombre, wa, plataforma, email, pass, perfil, vence) => {
-    const hoy = new Date();
-    const fVence = new Date(vence);
-    const dias = Math.ceil((fVence - hoy) / (1000 * 60 * 60 * 24));
-    const tDias = dias <= 0 ? "Vencido" : `${dias} días`;
-
-    const msg = `*HOLA ${nombre.toUpperCase()}, TE RECORDAMOS TUS DATOS:* 📺\n\n` +
-                `*CORREO:* ${email}\n` +
-                `*CONTRASEÑA:* ${pass}\n` +
-                `*PERFIL:* ${perfil}\n\n` +
-                `*ESTADO:* Te quedan *${tDias}* de servicio.`;
-
-    window.open(`https://wa.me/${wa.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-};
-
+// RENDERIZADO PRINCIPAL
 async function renderizarTodo() {
-    const { data: perfiles } = await _supabase.from('perfiles_clientes').select('*, cuentas_madre(*)');
-    const { data: flujo } = await _supabase.from('flujo_caja').select('*');
-    const { data: madres } = await _supabase.from('cuentas_madre').select('*');
-    const hoy = new Date(); hoy.setHours(0,0,0,0);
-
-    // TABLA CLIENTES
-    if(tablaPerfiles) {
-        tablaPerfiles.innerHTML = '';
-        perfiles?.sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento));
-        perfiles?.forEach(p => {
-            const v = new Date(p.fecha_vencimiento);
-            const dif = Math.ceil((v - hoy) / (1000 * 60 * 60 * 24));
-            const m = p.cuentas_madre;
-            tablaPerfiles.innerHTML += `
-                <tr class="fila-cliente border-b border-gray-700/50 hover:bg-gray-850 transition">
-                    <td class="p-5 text-xs font-bold uppercase tracking-tighter">
-                        ${p.nombre_cliente}<br><span class="text-green-500 font-mono text-[10px]">${p.whatsapp}</span>
-                    </td>
-                    <td class="p-5 text-[10px]">
-                        ${m ? `<b class="text-blue-400 uppercase text-xs">${m.plataforma}</b><br><span class="text-gray-400 font-black italic">${p.perfil_asignado}</span>` : '<span class="text-red-500 font-black animate-pulse">¡SIN CUENTA!</span>'}
-                    </td>
-                    <td class="p-5 text-center font-black ${dif <= 3 ? 'text-red-500' : 'text-green-400'}">
-                        <span class="text-xs">${p.fecha_vencimiento}</span><br>
-                        <span class="text-[9px] uppercase">${dif <= 0 ? 'Expiró' : 'Faltan ' + dif + ' días'}</span>
-                    </td>
-                    <td class="p-5 text-right">
-                        <div class="flex gap-2 justify-end">
-                            <button onclick="msgRecordarDatos('${p.nombre_cliente}','${p.whatsapp}','${m?.plataforma}','${m?.email_cuenta}','${m?.password_cuenta}','${p.perfil_asignado}','${p.fecha_vencimiento}')" class="bg-blue-600 hover:bg-blue-500 p-2.5 rounded-xl shadow-lg" title="Reenviar Datos">📩</button>
-                            <button onclick="msgVencimiento('${p.nombre_cliente}','${p.whatsapp}','${m?.plataforma}',${dif})" class="bg-green-600 hover:bg-green-500 p-2.5 rounded-xl shadow-lg">🔔</button>
-                            <button onclick="abrirMigrar('${p.id}')" class="bg-gray-700 hover:bg-purple-600 p-2.5 rounded-xl transition">⇄</button>
-                            <button onclick="borrarP('${p.id}')" class="bg-gray-700 hover:bg-red-600 p-2.5 rounded-xl transition">✕</button>
-                        </div>
-                    </td>
-                </tr>`;
-        });
-    }
-
-    // CUENTAS MADRE (FECHA Y DÍAS RECUPERADOS)
-    if(gridMadresDetalle) {
-        gridMadresDetalle.innerHTML = '';
-        madres?.forEach(m => {
-            const vMadre = new Date(m.fecha_vencimiento);
-            const difM = Math.ceil((vMadre - hoy) / (1000 * 60 * 60 * 24));
-            const ocupados = perfiles?.filter(p => p.cuenta_madre_id === m.id).length || 0;
-            gridMadresDetalle.innerHTML += `
-                <div class="bg-gray-850 border border-gray-700 rounded-[2.5rem] p-8 shadow-2xl relative card-madre transition hover:border-blue-500/50">
-                    <div class="absolute top-0 right-0 px-6 py-2 ${difM <= 5 ? 'bg-red-600 animate-pulse' : 'bg-blue-600'} text-[10px] font-black uppercase rounded-bl-3xl">
-                        VENCE EN: ${difM} DÍAS
-                    </div>
-                    <div>
-                        <h4 class="text-3xl font-black text-blue-500 uppercase mb-6 tracking-tighter italic">${m.plataforma}</h4>
-                        <div class="space-y-3 mb-6">
-                            <div class="bg-black/40 p-4 rounded-2xl border border-gray-700 select-all cursor-pointer hover:bg-black/60 transition">
-                                <p class="text-[9px] text-gray-500 font-black uppercase mb-1">E-mail Acceso:</p>
-                                <p class="text-xs font-mono text-gray-200 truncate font-bold">${m.email_cuenta}</p>
-                            </div>
-                            <div class="bg-black/40 p-4 rounded-2xl border border-gray-700 select-all cursor-pointer hover:bg-black/60 transition">
-                                <p class="text-[9px] text-gray-500 font-black uppercase mb-1">Contraseña Acceso:</p>
-                                <p class="text-sm font-mono text-blue-400 font-black tracking-widest">${m.password_cuenta}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="border-t border-gray-800 pt-6">
-                        <div class="flex justify-between items-end mb-6">
-                            <div>
-                                <span class="text-[9px] uppercase text-gray-500 font-black block mb-3">Ocupación Perfiles</span>
-                                <div class="flex gap-2">
-                                    ${Array.from({length: 5}, (_, i) => `<div class="w-5 h-5 rounded-md ${i < ocupados ? 'bg-red-600 shadow-[0_0_12px_rgba(220,38,38,0.5)]' : 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.5)]'}"></div>`).join('')}
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-[10px] text-gray-500 block uppercase font-black">Fecha de Vencimiento:</span>
-                                <span class="text-sm font-black text-white italic">${m.fecha_vencimiento}</span>
-                            </div>
-                        </div>
-                        <button onclick="eliminarMadre('${m.id}')" class="w-full bg-red-900/10 hover:bg-red-600 text-red-500 hover:text-white text-[10px] font-black py-4 rounded-2xl transition uppercase border border-red-900/40">Eliminar Cuenta Madre</button>
-                    </div>
-                </div>`;
-        });
-    }
-
-    const ingresos = flujo?.filter(f=>f.tipo==='ingreso').reduce((acc, f)=>acc+f.monto, 0) || 0;
-    const egresos = flujo?.filter(f=>f.tipo==='egreso').reduce((acc, f)=>acc+f.monto, 0) || 0;
-    document.getElementById('balance_monto').innerText = `$${(ingresos - egresos).toFixed(2)}`;
+    await cargarSelectMadres();
+    await renderizarTablaClientes();
+    if (typeof renderizarMadres === 'function') renderizarMadres();
+    if (typeof renderizarCaja === 'function') renderizarCaja();
+    actualizarBalanceGlobal();
 }
 
-window.msgVencimiento = (n, wa, plat, dias) => {
-    const t = dias <= 0 ? "HOY" : `en ${dias} días`;
-    const msg = `Hola *${n}*, tu servicio de *${plat}* vence ${t}. ¿Deseas renovar?`;
-    window.open(`https://wa.me/${wa.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-};
+async function renderizarTablaClientes() {
+    const { data: perfiles } = await _supabase.from('perfiles_clientes').select('*, cuentas_madre(plataforma, email)');
+    const tabla = document.getElementById('tablaPerfiles');
+    if (!tabla) return;
+    tabla.innerHTML = '';
 
-window.borrarP = async (id) => { if(confirm("¿Eliminar Cliente?")) { await _supabase.from('perfiles_clientes').delete().eq('id', id); renderizarTodo(); } };
-window.eliminarMadre = async (id) => { if(confirm("¿Eliminar Cuenta? Los clientes se quedarán sin acceso.")) { await _supabase.from('cuentas_madre').delete().eq('id', id); init(); } };
+    perfiles?.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-700/30 transition border-b border-gray-700/50";
+        
+        tr.innerHTML = `
+            <td class="p-5">
+                <p class="font-bold text-white uppercase">${item.nombre_cliente}</p>
+                <p class="text-[10px] text-gray-500 font-mono">${item.whatsapp || 'Sin WP'}</p>
+            </td>
+            <td class="p-5 text-xs">
+                <p class="text-blue-400 font-black italic uppercase">${item.cuentas_madre?.plataforma || 'S/N'}</p>
+                <p class="text-gray-400 font-bold tracking-tighter uppercase">${item.perfil_asignado}</p>
+            </td>
+            <td class="p-5 text-center">
+                <span class="bg-gray-900 px-4 py-2 rounded-xl text-[10px] font-black border border-gray-700 uppercase">
+                    ${item.vencimiento}
+                </span>
+            </td>
+            <td class="p-5">
+                <div class="btn-group">
+                    <div class="action-btn-container">
+                        <button onclick="enviarWhatsApp('${item.whatsapp}', '${item.nombre_cliente}', '${item.vencimiento}')" class="action-btn btn-wa">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.319 1.592 5.548 0 10.061-4.512 10.063-10.058.002-2.709-1.046-5.245-2.953-7.153-1.907-1.906-4.447-2.956-7.143-2.957-5.55 0-10.061 4.512-10.063 10.058-.001 2.105.574 4.103 1.658 5.895l-1.087 3.979 4.09-1.071z"/></svg>
+                        </button>
+                        <span class="btn-hint">Notificar</span>
+                    </div>
 
-document.getElementById('perfilForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const m = parseFloat(document.getElementById('monto').value);
-    await _supabase.from('perfiles_clientes').insert([{
-        nombre_cliente: document.getElementById('nombre_cliente').value,
-        whatsapp: document.getElementById('whatsapp').value,
-        cuenta_madre_id: document.getElementById('cuenta_madre_id').value,
-        perfil_asignado: document.getElementById('perfil_asignado').value,
-        fecha_vencimiento: document.getElementById('vencimiento_cliente').value,
-        precio_venta: m
-    }]);
-    await _supabase.from('flujo_caja').insert([{ tipo:'ingreso', monto:m, descripcion:'Venta' }]);
-    renderizarTodo(); e.target.reset();
-});
+                    <div class="action-btn-container">
+                        <button onclick="copiarDatos('${item.cuentas_madre?.email}', '${item.cuentas_madre?.plataforma}')" class="action-btn btn-datos">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+                        </button>
+                        <span class="btn-hint">Datos</span>
+                    </div>
 
-document.getElementById('madreForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const g = parseFloat(document.getElementById('m_gasto').value);
-    await _supabase.from('cuentas_madre').insert([{
-        plataforma: document.getElementById('m_plataforma').value,
-        email_cuenta: document.getElementById('m_email').value,
-        password_cuenta: document.getElementById('m_password').value,
-        fecha_vencimiento: document.getElementById('m_vencimiento').value,
-        costo_compra: g
-    }]);
-    await _supabase.from('flujo_caja').insert([{ tipo:'egreso', monto:g, descripcion:'Inversión' }]);
-    init(); e.target.reset();
-});
+                    <div class="action-btn-container">
+                        <button onclick="abrirModalMigrar('${item.id}')" class="action-btn btn-migrar">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        </button>
+                        <span class="btn-hint">Cambiar</span>
+                    </div>
 
-window.filtrarTabla = () => {
-    const b = document.getElementById('buscador').value.toLowerCase();
-    document.querySelectorAll('.fila-cliente').forEach(f => {
-        f.style.display = f.innerText.toLowerCase().includes(b) ? '' : 'none';
+                    <div class="action-btn-container">
+                        <button onclick="eliminarPerfil('${item.id}')" class="action-btn btn-delete">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                        <span class="btn-hint">Eliminar</span>
+                    </div>
+                </div>
+            </td>
+        `;
+        tabla.appendChild(tr);
     });
-};
+}
 
-window.descargarBackup = async () => {
-    const { data } = await _supabase.from('perfiles_clientes').select('*, cuentas_madre(plataforma, email_cuenta)');
-    let csv = "Cliente,WhatsApp,Plataforma,Vencimiento\n";
-    data.forEach(p => csv += `${p.nombre_cliente},${p.whatsapp},${p.cuentas_madre?.plataforma},${p.fecha_vencimiento}\n`);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'backup.csv'; a.click();
-};
-
-window.abrirMigrar = (id) => { document.getElementById('migrar_perfil_id').value = id; document.getElementById('modalMigrar').classList.remove('hidden'); };
-window.cerrarModal = () => document.getElementById('modalMigrar').classList.add('hidden');
-window.confirmarMigracion = async () => {
-    await _supabase.from('perfiles_clientes').update({ cuenta_madre_id: migrarMadreSelect.value }).eq('id', document.getElementById('migrar_perfil_id').value);
-    cerrarModal(); renderizarTodo();
-};
-
-async function init() {
+// FUNCIONES DE APOYO
+async function cargarSelectMadres() {
     const { data } = await _supabase.from('cuentas_madre').select('*');
-    if(selectMadres) {
-        selectMadres.innerHTML = '<option value="">ELEGIR CUENTA MADRE</option>';
-        migrarMadreSelect.innerHTML = '<option value="">DEJAR LIBRE</option>';
-        data?.forEach(m => {
-            const opt = `<option value="${m.id}">${m.plataforma.toUpperCase()} (${m.email_cuenta})</option>`;
-            selectMadres.innerHTML += opt;
-            migrarMadreSelect.innerHTML += opt;
-        });
+    const select = document.getElementById('cuenta_madre_id');
+    const selectMigrar = document.getElementById('migrar_nueva_madre');
+    if (!select) return;
+
+    const opciones = data?.map(m => `<option value="${m.id}">${m.plataforma} - ${m.email}</option>`).join('');
+    select.innerHTML = `<option value="">Seleccionar Cuenta...</option>${opciones}`;
+    if (selectMigrar) selectMigrar.innerHTML = opciones;
+}
+
+async function actualizarBalanceGlobal() {
+    const { data } = await _supabase.from('flujo_caja').select('monto, tipo');
+    const total = data?.reduce((acc, item) => item.tipo === 'ingreso' ? acc + item.monto : acc - item.monto, 0) || 0;
+    const el = document.getElementById('balance_monto');
+    if (el) el.innerText = `$${total.toFixed(2)}`;
+}
+
+// UTILIDADES
+function cambiarSeccion(id) {
+    document.querySelectorAll('.seccion-contenido').forEach(s => s.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active', 'text-blue-500'));
+    event.target.classList.add('tab-active');
+}
+
+function filtrarTabla() {
+    const filtro = document.getElementById('buscador').value.toUpperCase();
+    const filas = document.getElementById('tablaPerfiles').getElementsByTagName('tr');
+    for (let i = 0; i < filas.length; i++) {
+        const texto = filas[i].innerText.toUpperCase();
+        filas[i].style.display = texto.includes(filtro) ? "" : "none";
     }
-    renderizarTodo();
+}
+
+async function eliminarPerfil(id) {
+    if (confirm('¿Eliminar este cliente definitivamente?')) {
+        await _supabase.from('perfiles_clientes').delete().eq('id', id);
+        renderizarTodo();
+    }
+}
+
+function copiarDatos(email, plataforma) {
+    navigator.clipboard.writeText(`Cuenta: ${plataforma}\nCorreo: ${email}`);
+    alert("Datos copiados al portapapeles");
+}
+
+function enviarWhatsApp(numero, cliente, vencimiento) {
+    const msg = `Hola ${cliente}, te recordamos que tu cuenta vence el ${vencimiento}.`;
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, '_blank');
 }
