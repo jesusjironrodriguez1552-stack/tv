@@ -4,6 +4,12 @@
 console.log('💰 Módulo caja.js cargado');
 
 // ============================================
+// VARIABLES GLOBALES PARA NAVEGACIÓN DE MESES
+// ============================================
+let mesVistaActual = new Date().getMonth(); // 0-11
+let añoVistaActual = new Date().getFullYear();
+
+// ============================================
 // FUNCIÓN PRINCIPAL DE RENDERIZADO
 // ============================================
 async function renderizarCaja() {
@@ -124,13 +130,23 @@ async function renderizarCaja() {
         primerRegistro: flujo[0]
     });
 
-    // 7. CÁLCULOS DE FECHAS
+    // 7. CÁLCULOS DE FECHAS - USAR LAS VARIABLES GLOBALES
     const hoy = new Date();
-    const mesActual = hoy.getMonth(); // 0-11
-    const añoActual = hoy.getFullYear();
+    const mesActual = mesVistaActual; // Usar la vista actual, no el mes real
+    const añoActual = añoVistaActual; // Usar el año de la vista
     const nombreMes = new Date(añoActual, mesActual).toLocaleDateString('es-ES', { month: 'long' });
+    
+    // Actualizar el label del mes
+    const mesLabel = document.getElementById('mesActualLabel');
+    if (mesLabel) {
+        const esHoy = mesActual === new Date().getMonth() && añoActual === new Date().getFullYear();
+        mesLabel.innerHTML = `${nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1)} ${añoActual}`;
+        if (esHoy) {
+            mesLabel.innerHTML += ' <span class="text-[8px] text-green-400">● HOY</span>';
+        }
+    }
 
-    console.log('📅 Fecha actual:', { 
+    console.log('📅 Visualizando:', { 
         mes: mesActual + 1, 
         año: añoActual,
         nombreMes: nombreMes 
@@ -228,29 +244,38 @@ async function renderizarCaja() {
         });
     }
 
-    // 12. RENDERIZAR CUADROS DE RESUMEN
+    // 12. RENDERIZAR CUADROS DE RESUMEN CON GANANCIAS NETAS
     const balanceMes = ingresosMes - gastosMes;
+    const gananciaNetaMes = balanceMes; // Esto es lo que REALMENTE ganaste
     
     resumen.innerHTML = `
-        <!-- Caja Real Acumulada (Histórico Total) -->
-        <div class="bg-blue-600/10 border border-blue-500/50 p-6 rounded-3xl shadow-2xl">
-            <span class="text-[10px] text-blue-400 font-black uppercase block mb-1">
-                💎 Caja Real Acumulada
-            </span>
-            <p class="text-3xl font-mono font-black ${saldoTotalGlobal >= 0 ? 'text-white' : 'text-red-400'}">
-                $${saldoTotalGlobal.toFixed(2)}
+        <!-- GANANCIA NETA DEL MES ACTUAL - LO MÁS IMPORTANTE -->
+        <div class="bg-gradient-to-br from-purple-600/20 to-blue-600/20 border-2 border-purple-500/50 p-6 rounded-3xl shadow-2xl md:col-span-3">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] text-purple-400 font-black uppercase">
+                    💰 Ganancia Neta de ${nombreMes} ${añoActual}
+                </span>
+                <span class="text-[8px] px-2 py-1 rounded-full ${gananciaNetaMes >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
+                    ${gananciaNetaMes >= 0 ? '✅ Positivo' : '⚠️ Negativo'}
+                </span>
+            </div>
+            <p class="text-4xl font-mono font-black ${gananciaNetaMes >= 0 ? 'text-green-400' : 'text-red-400'}">
+                ${gananciaNetaMes >= 0 ? '+' : ''}${gananciaNetaMes.toFixed(2)}
             </p>
-            <span class="text-[8px] text-gray-500 block mt-1">Total histórico</span>
+            <p class="text-[9px] text-gray-400 mt-2">
+                Este es tu beneficio real del mes (Ventas - Gastos)
+            </p>
         </div>
-        
+
         <!-- Ventas del Mes -->
         <div class="bg-green-900/20 border border-green-500/50 p-6 rounded-3xl">
             <span class="text-[10px] text-green-500 font-black uppercase block mb-1">
                 📈 Ventas ${nombreMes}
             </span>
             <p class="text-2xl font-mono text-white font-bold">
-                +$${ingresosMes.toFixed(2)}
+                +${ingresosMes.toFixed(2)}
             </p>
+            <p class="text-[8px] text-gray-500 mt-1">Ingresos del mes</p>
         </div>
         
         <!-- Gastos del Mes -->
@@ -259,25 +284,30 @@ async function renderizarCaja() {
                 📉 Gastos ${nombreMes}
             </span>
             <p class="text-2xl font-mono text-white font-bold">
-                -$${gastosMes.toFixed(2)}
+                -${gastosMes.toFixed(2)}
             </p>
+            <p class="text-[8px] text-gray-500 mt-1">Egresos del mes</p>
         </div>
         
-        <!-- Balance del Mes (Opcional: 4to cuadro) -->
-        <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-3xl md:col-span-3">
-            <span class="text-[10px] text-gray-400 font-black uppercase block mb-1">
-                💰 Balance de ${nombreMes}
+        <!-- Caja Real Acumulada (Histórico Total) -->
+        <div class="bg-blue-600/10 border border-blue-500/50 p-6 rounded-3xl shadow-xl">
+            <span class="text-[10px] text-blue-400 font-black uppercase block mb-1">
+                💎 Capital Total Acumulado
             </span>
-            <p class="text-2xl font-mono font-bold ${balanceMes >= 0 ? 'text-green-400' : 'text-red-400'}">
-                ${balanceMes >= 0 ? '+' : ''}$${balanceMes.toFixed(2)}
+            <p class="text-3xl font-mono font-black ${saldoTotalGlobal >= 0 ? 'text-white' : 'text-red-400'}">
+                ${saldoTotalGlobal.toFixed(2)}
             </p>
-            <span class="text-[8px] text-gray-500 block mt-1">
-                ${balanceMes >= 0 ? '✅ Mes positivo' : '⚠️ Mes negativo'}
-            </span>
+            <span class="text-[8px] text-gray-500 block mt-1">Suma histórica de todo</span>
         </div>
     `;
 
     console.log('✅ Renderizado de caja completado exitosamente');
+    console.log(`📊 Resumen ${nombreMes}:`, {
+        ventas: ingresosMes,
+        gastos: gastosMes,
+        gananciaNeta: gananciaNetaMes,
+        capitalTotal: saldoTotalGlobal
+    });
 }
 
 // ============================================
@@ -363,5 +393,37 @@ if (formGasto) {
         }
     });
 }
+
+// ============================================
+// NAVEGACIÓN ENTRE MESES
+// ============================================
+
+// Cambiar mes de visualización (adelante o atrás)
+window.cambiarMesVista = async (direccion) => {
+    console.log(`🔄 Cambiando mes: ${direccion > 0 ? 'siguiente' : 'anterior'}`);
+    
+    mesVistaActual += direccion;
+    
+    // Ajustar año si es necesario
+    if (mesVistaActual > 11) {
+        mesVistaActual = 0;
+        añoVistaActual++;
+    } else if (mesVistaActual < 0) {
+        mesVistaActual = 11;
+        añoVistaActual--;
+    }
+    
+    // Re-renderizar con el nuevo mes
+    await renderizarCaja();
+};
+
+// Volver al mes actual
+window.volverMesActual = async () => {
+    console.log('🏠 Volviendo al mes actual');
+    const hoy = new Date();
+    mesVistaActual = hoy.getMonth();
+    añoVistaActual = hoy.getFullYear();
+    await renderizarCaja();
+};
 
 console.log('✅ Módulo caja.js inicializado correctamente');
