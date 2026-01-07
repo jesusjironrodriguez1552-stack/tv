@@ -355,22 +355,41 @@ if (formGasto) {
         }
 
         try {
+            // Preparar datos para insertar
+            // La fecha debe ser en formato ISO completo (con hora) para timestamptz
+            const fechaCompleta = new Date(fecha + 'T12:00:00').toISOString();
+            
+            const nuevoGasto = {
+                tipo: String('egreso'), // Forzar como string explícitamente
+                monto: Number(monto), // Forzar como número
+                descripcion: String(`${categoria}: ${descripcion}`), // Forzar como string
+                fecha: fechaCompleta
+            };
+
+            console.log('📝 Insertando gasto:', nuevoGasto);
+            console.log('📝 Tipo de dato "tipo":', typeof nuevoGasto.tipo, '- Valor:', nuevoGasto.tipo);
+
             // Registrar el gasto en flujo de caja
-            // IMPORTANTE: Algunos sistemas usan 'egreso' en lugar de 'gasto'
-            const { error } = await _supabase
+            const { data, error } = await _supabase
                 .from('flujo_caja')
-                .insert([{
-                    tipo: 'egreso', // Cambiado de 'gasto' a 'egreso'
-                    monto: monto,
-                    descripcion: `${categoria}: ${descripcion}`,
-                    fecha: fecha
-                }]);
+                .insert([nuevoGasto])
+                .select();
 
             if (error) {
-                console.error('❌ Error al guardar gasto:', error);
-                alert(`❌ Error al registrar gasto: ${error.message}`);
+                console.error('❌ Error completo:', error);
+                console.error('❌ Código de error:', error.code);
+                console.error('❌ Detalles:', error.details);
+                console.error('❌ Hint:', error.hint);
+                console.error('❌ Mensaje:', error.message);
+                
+                alert(`❌ Error al registrar gasto: ${error.message}\n\n` +
+                      `Detalles: ${error.details || 'N/A'}\n` +
+                      `Hint: ${error.hint || 'N/A'}\n\n` +
+                      `Revisa la consola para información completa.`);
                 return;
             }
+
+            console.log('✅ Gasto registrado exitosamente:', data);
 
             console.log('✅ Gasto registrado');
 
