@@ -12,14 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
 });
 
-// PESTAÑAS
 window.cambiarSeccion = function(idSeccion) {
     document.querySelectorAll('.seccion-contenido').forEach(s => s.classList.add('hidden'));
     document.getElementById(idSeccion).classList.remove('hidden');
-    
     const btnC = document.getElementById('btn-tab-clientes');
     const btnM = document.getElementById('btn-tab-madres');
-
     if(idSeccion === 'seccion-clientes') {
         btnC.className = 'tab-active pb-4 text-sm uppercase tracking-widest whitespace-nowrap';
         btnM.className = 'pb-4 text-sm text-gray-500 uppercase tracking-widest hover:text-white transition whitespace-nowrap';
@@ -29,31 +26,21 @@ window.cambiarSeccion = function(idSeccion) {
     }
 };
 
-// --- FUNCIÓN RECORDAR DATOS (REENVÍO COMPLETO) ---
 window.msgRecordarDatos = (nombre, wa, plataforma, email, pass, perfil, vence) => {
     const hoy = new Date();
     const fVence = new Date(vence);
     const dias = Math.ceil((fVence - hoy) / (1000 * 60 * 60 * 24));
-    const tDias = dias <= 0 ? "Vencido" : `${dias} días`;
-
-    const msg = `*HOLA ${nombre.toUpperCase()}, AQUÍ TIENES TUS DATOS:* 📺\n\n` +
-                `*SERVICIO:* ${plataforma.toUpperCase()}\n` +
-                `*CORREO:* ${email}\n` +
-                `*CONTRASEÑA:* ${pass}\n` +
-                `*PERFIL:* ${perfil}\n\n` +
-                `*ESTADO:* Te quedan *${tDias}* de servicio.`;
-
+    const tDias = dias <= 0 ? "⚠️ Vencido" : `${dias} días`;
+    const msg = `*HOLA ${nombre.toUpperCase()}, TUS DATOS DE ACCESO:* 📺\n\n*SERVICIO:* ${plataforma.toUpperCase()}\n*CORREO:* ${email}\n*CONTRASEÑA:* ${pass}\n*PERFIL:* ${perfil}\n\n*ESTADO:* Te quedan *${tDias}* de servicio.`;
     window.open(`https://wa.me/${wa.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// RENDERIZAR TODO
 async function renderizarTodo() {
     const { data: perfiles } = await _supabase.from('perfiles_clientes').select('*, cuentas_madre(*)');
     const { data: flujo } = await _supabase.from('flujo_caja').select('*');
     const { data: madres } = await _supabase.from('cuentas_madre').select('*');
     const hoy = new Date(); hoy.setHours(0,0,0,0);
 
-    // 1. Render Tabla Clientes
     if(tablaPerfiles) {
         tablaPerfiles.innerHTML = '';
         perfiles?.sort((a, b) => new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento));
@@ -61,52 +48,35 @@ async function renderizarTodo() {
             const v = new Date(p.fecha_vencimiento);
             const dif = Math.ceil((v - hoy) / (1000 * 60 * 60 * 24));
             const m = p.cuentas_madre;
-
             tablaPerfiles.innerHTML += `
-                <tr class="fila-cliente border-b border-gray-700/50 hover:bg-gray-850">
-                    <td class="p-5">
-                        <b class="text-white text-xs block">${p.nombre_cliente.toUpperCase()}</b>
-                        <span class="text-green-500 font-mono text-[10px]">${p.whatsapp}</span>
-                    </td>
-                    <td class="p-5 text-[10px]">
-                        ${m ? `<b class="text-blue-400 uppercase text-xs">${m.plataforma}</b><br><span class="text-gray-400 font-bold italic">${p.perfil_asignado}</span>` : '<span class="text-red-500 font-black animate-pulse">SIN CUENTA</span>'}
-                    </td>
-                    <td class="p-5 text-center">
-                        <span class="font-black text-xs ${dif <= 3 ? 'text-red-500' : 'text-green-400'}">${p.fecha_vencimiento}</span><br>
-                        <span class="text-[9px] text-gray-500 uppercase font-bold">${dif <= 0 ? 'Expiró' : 'Faltan ' + dif + ' días'}</span>
-                    </td>
-                    <td class="p-5 text-right">
-                        <div class="flex gap-2 justify-end">
-                            <button onclick="msgRecordarDatos('${p.nombre_cliente}','${p.whatsapp}','${m?.plataforma}','${m?.email_cuenta}','${m?.password_cuenta}','${p.perfil_asignado}','${p.fecha_vencimiento}')" class="bg-blue-600 hover:bg-blue-500 p-2.5 rounded-lg text-xs" title="Enviar Datos">📩</button>
-                            <button onclick="msgVencimiento('${p.nombre_cliente}','${p.whatsapp}','${m?.plataforma}',${dif})" class="bg-green-600 hover:bg-green-500 p-2.5 rounded-lg text-xs">🔔</button>
-                            <button onclick="abrirMigrar('${p.id}')" class="bg-gray-700 hover:bg-purple-600 p-2.5 rounded-lg text-xs">⇄</button>
-                            <button onclick="borrarP('${p.id}')" class="bg-gray-700 hover:bg-red-600 p-2.5 rounded-lg text-xs">✕</button>
-                        </div>
+                <tr class="fila-cliente border-b border-gray-700/50 hover:bg-gray-850 transition">
+                    <td class="p-4 text-xs"><b>${p.nombre_cliente.toUpperCase()}</b><br><span class="text-green-500">${p.whatsapp}</span></td>
+                    <td class="p-4 text-[10px]">${m ? `<b class="text-blue-400 uppercase text-xs">${m.plataforma}</b><br>${p.perfil_asignado}` : '<span class="text-red-500 font-bold">SIN CUENTA</span>'}</td>
+                    <td class="p-4 text-center font-black ${dif <= 3 ? 'text-red-500' : 'text-green-400'} text-xs">${p.fecha_vencimiento}<br><span class="text-[9px] uppercase">${dif <= 0 ? 'Expiró' : dif + ' días'}</span></td>
+                    <td class="p-4 text-right flex gap-1 justify-end">
+                        <button onclick="msgRecordarDatos('${p.nombre_cliente}','${p.whatsapp}','${m?.plataforma}','${m?.email_cuenta}','${m?.password_cuenta}','${p.perfil_asignado}','${p.fecha_vencimiento}')" class="bg-blue-600 p-2 rounded-lg">📩</button>
+                        <button onclick="msgVencimiento('${p.nombre_cliente}','${p.whatsapp}','${m?.plataforma}',${dif})" class="bg-green-600 p-2 rounded-lg">🔔</button>
+                        <button onclick="abrirMigrar('${p.id}')" class="bg-gray-700 p-2 rounded-lg">⇄</button>
+                        <button onclick="borrarP('${p.id}')" class="bg-gray-700 p-2 rounded-lg text-red-500">✕</button>
                     </td>
                 </tr>`;
         });
     }
 
-    // 2. Render Grid Madre (DISEÑO SOLICITADO CON FECHAS)
     if(gridMadresDetalle) {
         gridMadresDetalle.innerHTML = '';
         madres?.forEach(m => {
             const vMadre = new Date(m.fecha_vencimiento);
             const difM = Math.ceil((vMadre - hoy) / (1000 * 60 * 60 * 24));
             const ocupados = perfiles?.filter(p => p.cuenta_madre_id === m.id).length || 0;
-
             gridMadresDetalle.innerHTML += `
-                <div class="bg-gray-850 border border-gray-700 rounded-3xl p-6 shadow-2xl relative card-madre">
-                    <div class="absolute top-0 right-0 px-4 py-2 ${difM <= 5 ? 'bg-red-600 animate-pulse' : 'bg-green-600'} text-[10px] font-black uppercase rounded-bl-2xl">
-                        VENCE EN: ${difM} DÍAS
-                    </div>
-
+                <div class="bg-gray-850 border border-gray-700 rounded-3xl p-6 shadow-2xl relative card-madre transition hover:border-blue-500/50">
+                    <div class="absolute top-0 right-0 px-4 py-2 ${difM <= 5 ? 'bg-red-600 animate-pulse' : 'bg-green-600'} text-[10px] font-black uppercase rounded-bl-2xl">VENCE EN: ${difM} DÍAS</div>
                     <div>
                         <h4 class="text-2xl font-black text-blue-500 uppercase mb-4 tracking-tighter">${m.plataforma}</h4>
-                        
                         <div class="space-y-3 mb-6">
                             <div class="bg-black/40 p-3 rounded-xl border border-gray-700 select-all cursor-pointer">
-                                <p class="text-[9px] text-gray-500 font-black uppercase mb-1">E-mail de Acceso:</p>
+                                <p class="text-[9px] text-gray-500 font-black uppercase mb-1">E-mail Acceso:</p>
                                 <p class="text-xs font-mono text-gray-200 truncate">${m.email_cuenta}</p>
                             </div>
                             <div class="bg-black/40 p-3 rounded-xl border border-gray-700 select-all cursor-pointer">
@@ -115,24 +85,19 @@ async function renderizarTodo() {
                             </div>
                         </div>
                     </div>
-
-                    <div class="border-t border-gray-800 pt-5">
-                        <div class="flex justify-between items-end mb-4">
-                            <div>
-                                <span class="text-[9px] uppercase text-gray-500 font-black block mb-2">Capacidad de Perfiles</span>
-                                <div class="flex gap-2">
-                                    ${Array.from({length: 5}, (_, i) => `
-                                        <div class="w-4 h-4 rounded-sm ${i < ocupados ? 'bg-red-600 shadow-[0_0_8px_red]' : 'bg-green-500 shadow-[0_0_8px_green]'}"></div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-[10px] text-gray-500 block uppercase font-bold">Fecha de Pago:</span>
-                                <span class="text-sm font-black text-white">${m.fecha_vencimiento}</span>
+                    <div class="border-t border-gray-800 pt-5 flex justify-between items-end">
+                        <div>
+                            <span class="text-[9px] uppercase text-gray-500 font-black block mb-2">Cupos</span>
+                            <div class="flex gap-2">
+                                ${Array.from({length: 5}, (_, i) => `<div class="w-4 h-4 rounded-sm ${i < ocupados ? 'bg-red-600 shadow-[0_0_8px_red]' : 'bg-green-500 shadow-[0_0_8px_green]'}"></div>`).join('')}
                             </div>
                         </div>
-                        <button onclick="eliminarMadre('${m.id}')" class="w-full bg-red-900/10 hover:bg-red-600 text-red-500 hover:text-white text-[10px] font-bold py-3 rounded-xl transition-all uppercase border border-red-900/40">Eliminar Inventario</button>
+                        <div class="text-right">
+                            <span class="text-[10px] text-gray-500 block uppercase font-bold">Pagar el:</span>
+                            <span class="text-sm font-black text-white">${m.fecha_vencimiento}</span>
+                        </div>
                     </div>
+                    <button onclick="eliminarMadre('${m.id}')" class="mt-4 w-full bg-red-900/10 hover:bg-red-600 text-red-500 hover:text-white text-[10px] font-bold py-3 rounded-xl transition uppercase border border-red-900/40">Eliminar</button>
                 </div>`;
         });
     }
@@ -142,16 +107,14 @@ async function renderizarTodo() {
     document.getElementById('balance_monto').innerText = `$${(ingresos - egresos).toFixed(2)}`;
 }
 
-// FUNCIONES WHATSAPP
 window.msgVencimiento = (n, wa, plat, dias) => {
     const t = dias <= 0 ? "HOY" : `en ${dias} días`;
     const msg = `Hola *${n}*, tu servicio de *${plat}* vence ${t}. ¿Deseas renovar?`;
     window.open(`https://wa.me/${wa.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
 };
 
-// CRUD
-window.borrarP = async (id) => { if(confirm("¿Eliminar cliente?")) { await _supabase.from('perfiles_clientes').delete().eq('id', id); renderizarTodo(); } };
-window.eliminarMadre = async (id) => { if(confirm("¿ELIMINAR CUENTA MADRE? Los perfiles asociados quedarán sin acceso.")) { await _supabase.from('cuentas_madre').delete().eq('id', id); init(); } };
+window.borrarP = async (id) => { if(confirm("¿Eliminar?")) { await _supabase.from('perfiles_clientes').delete().eq('id', id); renderizarTodo(); } };
+window.eliminarMadre = async (id) => { if(confirm("¿Eliminar Cuenta Madre?")) { await _supabase.from('cuentas_madre').delete().eq('id', id); init(); } };
 
 document.getElementById('perfilForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -164,7 +127,7 @@ document.getElementById('perfilForm').addEventListener('submit', async (e) => {
         fecha_vencimiento: document.getElementById('vencimiento_cliente').value,
         precio_venta: m
     }]);
-    await _supabase.from('flujo_caja').insert([{ tipo:'ingreso', monto:m, descripcion:'Venta Perfil' }]);
+    await _supabase.from('flujo_caja').insert([{ tipo:'ingreso', monto:m, descripcion:'Venta' }]);
     renderizarTodo(); e.target.reset();
 });
 
@@ -178,7 +141,7 @@ document.getElementById('madreForm').addEventListener('submit', async (e) => {
         fecha_vencimiento: document.getElementById('m_vencimiento').value,
         costo_compra: g
     }]);
-    await _supabase.from('flujo_caja').insert([{ tipo:'egreso', monto:g, descripcion:'Inversión Cuenta' }]);
+    await _supabase.from('flujo_caja').insert([{ tipo:'egreso', monto:g, descripcion:'Inversión' }]);
     init(); e.target.reset();
 });
 
