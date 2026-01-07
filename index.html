@@ -3,27 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SISTEMA CVSE V6.0 - CONTROL TOTAL</title>
+    <title>SISTEMA CVSE V6.5 - CONTROL TOTAL</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         .bg-gray-850 { background-color: #1a202c; }
         .tab-active { border-bottom: 4px solid #3b82f6; color: #3b82f6; font-weight: bold; }
-        
-        /* RESPONSIVO PROFESIONAL */
         .contenedor-tabla { overflow-x: auto; width: 100%; border-radius: 1rem; }
-        
-        /* En PC: Sin barras laterales, aprovecha todo el espacio */
-        @media (min-width: 1024px) {
-            .tabla-clientes { min-width: 100%; table-layout: auto; }
-        }
-        
-        /* En Celular: Scroll lateral protegido para botones */
-        @media (max-width: 1023px) {
-            .tabla-clientes { min-width: 850px; }
-        }
-
-        .card-madre { min-height: 350px; display: flex; flex-direction: column; justify-content: space-between; }
+        @media (min-width: 1024px) { .tabla-clientes { min-width: 100%; table-layout: auto; } }
+        @media (max-width: 1023px) { .tabla-clientes { min-width: 850px; } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -32,13 +20,13 @@
     <div class="max-w-7xl mx-auto">
         <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b border-gray-800 pb-6">
             <div>
-                <h1 class="text-3xl font-black text-blue-500 tracking-tighter uppercase italic">CVSE V6.0</h1>
-                <p class="text-gray-500 text-sm font-bold uppercase tracking-widest">Administración de Servicios</p>
+                <h1 class="text-3xl font-black text-blue-500 tracking-tighter uppercase italic">CVSE V6.5</h1>
+                <p class="text-gray-500 text-sm font-bold uppercase tracking-widest">Administración Profesional</p>
             </div>
             <div class="flex flex-wrap justify-center gap-4 items-center">
                 <button onclick="descargarBackup()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-[10px] font-black uppercase border border-gray-700">📥 Backup CSV</button>
                 <div class="bg-black p-4 rounded-2xl border border-green-500/40 text-right shadow-2xl min-w-[200px]">
-                    <span class="text-green-500 text-[10px] uppercase block font-black">Dinero Real en Caja</span>
+                    <span class="text-green-500 text-[10px] uppercase block font-black">Caja Real Acumulada</span>
                     <span id="balance_monto" class="text-3xl font-mono text-white font-bold">$0.00</span>
                 </div>
             </div>
@@ -52,7 +40,7 @@
 
         <div id="seccion-clientes" class="seccion-contenido">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                <aside class="lg:col-span-4 space-y-6">
+                <aside class="lg:col-span-4">
                     <div class="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-xl">
                         <h2 class="text-xs font-black text-blue-400 uppercase mb-6 tracking-widest border-b border-gray-700 pb-2 italic">➕ Registrar Venta</h2>
                         <form id="perfilForm" class="space-y-4">
@@ -64,22 +52,15 @@
                                 <input type="date" id="vencimiento_cliente" class="w-full bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600" required>
                                 <input type="number" id="monto" step="0.01" placeholder="Precio $" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600" required>
                             </div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg">Guardar Venta</button>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black uppercase text-xs transition-all">Guardar Venta</button>
                         </form>
                     </div>
                 </aside>
                 <main class="lg:col-span-8">
-                    <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="🔍 Buscar por nombre o servicio..." class="w-full mb-6 bg-gray-800 border border-gray-700 p-4 rounded-2xl outline-none focus:border-blue-500 shadow-inner">
+                    <input type="text" id="buscador" onkeyup="filtrarTabla()" placeholder="🔍 Buscar cliente..." class="w-full mb-6 bg-gray-800 border border-gray-700 p-4 rounded-2xl outline-none focus:border-blue-500">
                     <div class="contenedor-tabla shadow-2xl border border-gray-700 bg-gray-800">
                         <table class="tabla-clientes w-full text-left text-sm">
-                            <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]">
-                                <tr>
-                                    <th class="p-5">Cliente</th>
-                                    <th class="p-5">Cuenta/Perfil</th>
-                                    <th class="p-5 text-center">Vencimiento</th>
-                                    <th class="p-5 text-right">Acciones</th>
-                                </tr>
-                            </thead>
+                            <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]"><tr class="divide-x divide-gray-800"><th class="p-5">Cliente</th><th class="p-5">Cuenta/Perfil</th><th class="p-5 text-center">Vencimiento</th><th class="p-5 text-right">Acciones</th></tr></thead>
                             <tbody id="tablaPerfiles" class="divide-y divide-gray-700"></tbody>
                         </table>
                     </div>
@@ -93,14 +74,27 @@
                     <div class="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-xl">
                         <h2 class="text-xs font-black text-yellow-500 uppercase mb-6 tracking-widest border-b border-gray-700 pb-2 italic">📂 Invertir en Cuenta</h2>
                         <form id="madreForm" class="space-y-4">
-                            <input type="text" id="m_plataforma" placeholder="Plataforma" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
-                            <input type="email" id="m_email" placeholder="Correo" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
-                            <input type="text" id="m_password" placeholder="Contraseña" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            <input type="text" id="m_plataforma" placeholder="Plataforma (Netflix, Disney...)" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            <input type="email" id="m_email" placeholder="Correo de la cuenta" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            <input type="text" id="m_password" placeholder="Contraseña / PIN Maestro" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            
                             <div class="grid grid-cols-2 gap-3">
-                                <input type="date" id="m_vencimiento" class="bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600" required>
-                                <input type="number" id="m_gasto" step="0.01" placeholder="Costo $" class="bg-gray-700 p-4 rounded-2xl border border-gray-600" required>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] text-gray-500 font-black uppercase px-2">Vencimiento</label>
+                                    <input type="date" id="m_vencimiento" class="bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600 outline-none" required>
+                                </div>
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-[9px] text-gray-500 font-black uppercase px-2">Capacidad Perfiles</label>
+                                    <input type="number" id="m_perfiles_manual" placeholder="Ej: 5" class="bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none font-bold" required min="1">
+                                </div>
                             </div>
-                            <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-2xl font-black text-xs uppercase text-black transition-all">Registrar Cuenta</button>
+
+                            <div class="flex flex-col gap-1">
+                                <label class="text-[9px] text-gray-500 font-black uppercase px-2">Costo de Compra ($)</label>
+                                <input type="number" id="m_costo" step="0.01" placeholder="Monto invertido" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none" required>
+                            </div>
+                            
+                            <button type="submit" class="w-full bg-yellow-600 hover:bg-yellow-500 py-4 rounded-2xl font-black text-xs uppercase text-black transition-all">Registrar Cuenta Madre</button>
                         </form>
                     </div>
                 </aside>
@@ -117,24 +111,19 @@
                         <h2 class="text-xs font-black text-red-400 uppercase mb-6 tracking-widest border-b border-gray-700 pb-2 italic">💸 Gasto Extraordinario</h2>
                         <form id="gastoManualForm" class="space-y-4">
                             <input type="text" id="g_motivo" placeholder="Motivo (Ej: Publicidad, Comisiones)" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600 focus:border-red-500" required>
-                            <input type="number" id="g_monto" step="0.01" placeholder="Monto $" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600" required>
-                            <button type="submit" class="w-full bg-red-600 hover:bg-red-500 py-4 rounded-2xl font-black uppercase text-xs transition-all shadow-lg">Registrar Gasto</button>
+                            <div class="grid grid-cols-2 gap-3">
+                                <input type="number" id="g_monto" step="0.01" placeholder="Monto $" class="w-full bg-gray-700 p-4 rounded-2xl outline-none border border-gray-600" required>
+                                <input type="date" id="g_fecha" class="w-full bg-gray-700 p-4 rounded-2xl text-xs border border-gray-600 outline-none" required>
+                            </div>
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-500 py-4 rounded-2xl font-black uppercase text-xs transition-all">Registrar Gasto</button>
                         </form>
                     </div>
                 </aside>
                 <main class="lg:col-span-8">
-                    <div id="resumenMensual" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        </div>
+                    <div id="resumenMensual" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"></div>
                     <div class="contenedor-tabla shadow-2xl border border-gray-700 bg-gray-800">
                         <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]">
-                                <tr>
-                                    <th class="p-4">Fecha</th>
-                                    <th class="p-4">Descripción</th>
-                                    <th class="p-4">Tipo</th>
-                                    <th class="p-4 text-right">Monto</th>
-                                </tr>
-                            </thead>
+                            <thead class="bg-gray-900 text-gray-500 font-bold uppercase text-[10px]"><tr><th class="p-4">Fecha</th><th class="p-4">Descripción</th><th class="p-4 text-right">Monto</th></tr></thead>
                             <tbody id="listaFlujoMensual" class="divide-y divide-gray-700"></tbody>
                         </table>
                     </div>
@@ -150,12 +139,13 @@
             <select id="migrar_nueva_madre" class="w-full bg-gray-700 p-4 rounded-2xl mb-8 text-sm text-white border border-gray-600 outline-none"></select>
             <div class="flex gap-4">
                 <button onclick="cerrarModal()" class="flex-1 bg-gray-700 py-4 rounded-2xl font-black uppercase text-xs">Cerrar</button>
-                <button onclick="confirmarMigracion()" class="flex-1 bg-blue-600 py-4 rounded-2xl font-black uppercase text-xs shadow-lg shadow-blue-900/40">Confirmar</button>
+                <button onclick="confirmarMigracion()" class="flex-1 bg-blue-600 py-4 rounded-2xl font-black uppercase text-xs">Confirmar</button>
             </div>
         </div>
     </div>
 
     <script src="app.js"></script>
+    <script src="madres.js"></script>
     <script src="caja.js"></script>
 </body>
 </html>
