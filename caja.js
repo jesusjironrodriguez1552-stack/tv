@@ -1,5 +1,6 @@
-// caja.js - CONTROL FINANCIERO PROFESIONAL CVSE V6.5
+// caja.js - CONTROL FINANCIERO CVSE V6.5
 
+// 1. Escuchador para el formulario de Gastos
 document.getElementById('gastoManualForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const motivo = document.getElementById('g_motivo').value;
@@ -10,7 +11,7 @@ document.getElementById('gastoManualForm')?.addEventListener('submit', async (e)
         { 
             tipo: 'egreso', 
             monto: monto, 
-            descripcion: `GASTO MANUAL: ${motivo.toUpperCase()}`, // Nombre corregido
+            descripcion: `GASTO MANUAL: ${motivo.toUpperCase()}`,
             fecha: fecha 
         }
     ]);
@@ -22,7 +23,7 @@ document.getElementById('gastoManualForm')?.addEventListener('submit', async (e)
 });
 
 async function renderizarCaja() {
-    // 1. Traer datos
+    // Consultamos la tabla flujo_caja
     const { data: flujo, error } = await _supabase.from('flujo_caja').select('*');
     
     const lista = document.getElementById('listaFlujoMensual');
@@ -30,23 +31,28 @@ async function renderizarCaja() {
     const balanceHeader = document.getElementById('balance_monto');
     
     if (error) {
-        console.error("Error de Supabase:", error);
+        console.error("Error cargando flujo_caja:", error);
         return;
     }
     if (!lista || !resumen) return;
 
-    // 2. Cálculos de fechas para el mes actual
+    // Fechas para filtrar el mes actual (Enero 2026)
     const hoy = new Date();
     const mesActual = hoy.getMonth();
     const añoActual = hoy.getFullYear();
 
-    // 3. Balance Total (Header) - Suma todo lo de la tabla
-    const saldoTotalGlobal = flujo?.reduce((acc, f) => 
-        f.tipo === 'ingreso' ? acc + parseFloat(f.monto) : acc - parseFloat(f.monto), 0) || 0;
+    // 1. CÁLCULO DEL BALANCE TOTAL (Lo que sale en el cuadro negro)
+    const saldoTotalGlobal = flujo?.reduce((acc, f) => {
+        const val = parseFloat(f.monto) || 0;
+        return f.tipo === 'ingreso' ? acc + val : acc - val;
+    }, 0) || 0;
     
-    if (balanceHeader) balanceHeader.innerText = `$${saldoTotalGlobal.toFixed(2)}`;
+    // Inyectar en el Header
+    if (balanceHeader) {
+        balanceHeader.innerText = `$${saldoTotalGlobal.toFixed(2)}`;
+    }
 
-    // 4. Filtrar movimientos del mes
+    // 2. FILTRAR MOVIMIENTOS DEL MES ACTUAL
     const movimientosMes = flujo?.filter(f => {
         const d = new Date(f.fecha);
         return d.getMonth() === mesActual && d.getFullYear() === añoActual;
@@ -55,28 +61,27 @@ async function renderizarCaja() {
     let ingresosMes = 0;
     let gastosMes = 0;
 
-    // Limpiar tabla antes de llenar
     lista.innerHTML = '';
-
-    // 5. Llenar tabla con nombres de columna exactos de tu Supabase
+    
+    // Ordenar por fecha (más nuevos arriba)
     movimientosMes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
     movimientosMes.forEach(item => {
         const esIngreso = item.tipo === 'ingreso';
-        const montoNum = parseFloat(item.monto);
+        const montoNum = parseFloat(item.monto) || 0;
         
         if (esIngreso) ingresosMes += montoNum;
         else gastosMes += montoNum;
 
         const fechaObj = new Date(item.fecha);
-        const fechaFormateada = isNaN(fechaObj) ? "S/F" : fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+        const fechaTxt = isNaN(fechaObj) ? "---" : fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
         
-        // IMPORTANTE: Aquí usamos item.descripcion (como en tu imagen)
+        // CORRECCIÓN: Usamos item.descripcion (exacto como en tu imagen de Supabase)
         lista.innerHTML += `
             <tr class="hover:bg-gray-700/30 border-b border-gray-800 transition">
-                <td class="p-4 text-[10px] font-mono text-gray-400 italic">${fechaFormateada}</td>
-                <td class="p-4 text-xs font-bold uppercase tracking-tighter text-white">
-                    ${item.descripcion || 'SIN DESCRIPCIÓN'} 
+                <td class="p-4 text-[10px] font-mono text-gray-400 italic">${fechaTxt}</td>
+                <td class="p-4 text-xs font-bold uppercase tracking-tighter">
+                    ${item.descripcion || 'Sin descripción'}
                 </td>
                 <td class="p-4 text-right font-black font-mono ${esIngreso ? 'text-green-400' : 'text-red-400'}">
                     ${esIngreso ? '+' : '-'}$${montoNum.toFixed(2)}
@@ -84,18 +89,18 @@ async function renderizarCaja() {
             </tr>`;
     });
 
-    // 6. Pintar cuadros de resumen
+    // 3. PINTAR CUADROS DE RESUMEN
     resumen.innerHTML = `
         <div class="bg-blue-600/10 border border-blue-500/50 p-6 rounded-3xl shadow-2xl">
-            <span class="text-[10px] text-blue-400 font-black uppercase block mb-1">Caja Real</span>
+            <span class="text-[10px] text-blue-400 font-black uppercase block mb-1">Caja Total Real</span>
             <p class="text-3xl font-mono text-white font-black">$${saldoTotalGlobal.toFixed(2)}</p>
         </div>
         <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-3xl">
-            <span class="text-[10px] text-green-500 font-black uppercase block mb-1">Ventas Mes</span>
+            <span class="text-[10px] text-green-500 font-black uppercase block mb-1">Ventas Enero</span>
             <p class="text-2xl font-mono text-white font-bold">$${ingresosMes.toFixed(2)}</p>
         </div>
         <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-3xl">
-            <span class="text-[10px] text-red-500 font-black uppercase block mb-1">Gastos Mes</span>
+            <span class="text-[10px] text-red-500 font-black uppercase block mb-1">Gastos Enero</span>
             <p class="text-2xl font-mono text-white font-bold">$${gastosMes.toFixed(2)}</p>
         </div>
     `;
