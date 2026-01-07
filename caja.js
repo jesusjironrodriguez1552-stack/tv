@@ -1,6 +1,5 @@
 // caja.js - CONTROL FINANCIERO PROFESIONAL CVSE V6.5
 
-// 1. Escuchador para el formulario de Gastos Manuales
 document.getElementById('gastoManualForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const motivo = document.getElementById('g_motivo').value;
@@ -11,96 +10,93 @@ document.getElementById('gastoManualForm')?.addEventListener('submit', async (e)
         { 
             tipo: 'egreso', 
             monto: monto, 
-            descripcion: `GASTO MANUAL: ${motivo.toUpperCase()}`,
+            descripcion: `GASTO MANUAL: ${motivo.toUpperCase()}`, // Nombre corregido
             fecha: fecha 
         }
     ]);
 
     if (!error) {
         e.target.reset();
-        // El cerebro (app.js) se encarga de refrescar todo
         if (typeof renderizarTodo === 'function') await renderizarTodo();
-    } else {
-        alert("Error al registrar el gasto");
     }
 });
 
 async function renderizarCaja() {
+    // 1. Traer datos
     const { data: flujo, error } = await _supabase.from('flujo_caja').select('*');
+    
     const lista = document.getElementById('listaFlujoMensual');
     const resumen = document.getElementById('resumenMensual');
-    const balanceHeader = document.getElementById('balance_monto'); // El cuadro negro del index
+    const balanceHeader = document.getElementById('balance_monto');
     
-    if (!lista || !resumen || error) return;
+    if (error) {
+        console.error("Error de Supabase:", error);
+        return;
+    }
+    if (!lista || !resumen) return;
 
+    // 2. Cálculos de fechas para el mes actual
     const hoy = new Date();
     const mesActual = hoy.getMonth();
     const añoActual = hoy.getFullYear();
 
-    // 1. CÁLCULO DE SALDO TOTAL (Para el Header)
-    const saldoTotalGlobal = flujo?.reduce((acc, f) => f.tipo === 'ingreso' ? acc + f.monto : acc - f.monto, 0) || 0;
+    // 3. Balance Total (Header) - Suma todo lo de la tabla
+    const saldoTotalGlobal = flujo?.reduce((acc, f) => 
+        f.tipo === 'ingreso' ? acc + parseFloat(f.monto) : acc - parseFloat(f.monto), 0) || 0;
     
-    // Actualizar el header inmediatamente
-    if (balanceHeader) {
-        balanceHeader.innerText = `$${saldoTotalGlobal.toFixed(2)}`;
-    }
+    if (balanceHeader) balanceHeader.innerText = `$${saldoTotalGlobal.toFixed(2)}`;
 
-    // 2. CAPITAL DE ARRASTRE (Saldo antes del mes actual)
-    const saldoAnterior = flujo?.filter(f => {
-        const fechaMov = new Date(f.fecha);
-        return fechaMov < new Date(añoActual, mesActual, 1);
-    }).reduce((acc, f) => f.tipo === 'ingreso' ? acc + f.monto : acc - f.monto, 0) || 0;
-
-    // 3. MOVIMIENTOS DEL MES ACTUAL
+    // 4. Filtrar movimientos del mes
     const movimientosMes = flujo?.filter(f => {
-        const fechaMov = new Date(f.fecha);
-        return fechaMov.getMonth() === mesActual && fechaMov.getFullYear() === añoActual;
+        const d = new Date(f.fecha);
+        return d.getMonth() === mesActual && d.getFullYear() === añoActual;
     }) || [];
 
     let ingresosMes = 0;
     let gastosMes = 0;
 
+    // Limpiar tabla antes de llenar
     lista.innerHTML = '';
-    // Ordenar: Más reciente primero
+
+    // 5. Llenar tabla con nombres de columna exactos de tu Supabase
     movimientosMes.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
     movimientosMes.forEach(item => {
         const esIngreso = item.tipo === 'ingreso';
-        if (esIngreso) ingresosMes += item.monto;
-        else gastosMes += item.monto;
-
-        const fechaLocal = new Date(item.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+        const montoNum = parseFloat(item.monto);
         
+        if (esIngreso) ingresosMes += montoNum;
+        else gastosMes += montoNum;
+
+        const fechaObj = new Date(item.fecha);
+        const fechaFormateada = isNaN(fechaObj) ? "S/F" : fechaObj.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+        
+        // IMPORTANTE: Aquí usamos item.descripcion (como en tu imagen)
         lista.innerHTML += `
-            <tr class="hover:bg-gray-700/30 border-b border-gray-700/50 transition">
-                <td class="p-4 text-[10px] font-mono text-gray-400 italic">${fechaLocal}</td>
-                <td class="p-4 text-xs font-bold uppercase tracking-tighter">${item.descripcion}</td>
+            <tr class="hover:bg-gray-700/30 border-b border-gray-800 transition">
+                <td class="p-4 text-[10px] font-mono text-gray-400 italic">${fechaFormateada}</td>
+                <td class="p-4 text-xs font-bold uppercase tracking-tighter text-white">
+                    ${item.descripcion || 'SIN DESCRIPCIÓN'} 
+                </td>
                 <td class="p-4 text-right font-black font-mono ${esIngreso ? 'text-green-400' : 'text-red-400'}">
-                    ${esIngreso ? '+' : '-'}$${item.monto.toFixed(2)}
+                    ${esIngreso ? '+' : '-'}$${montoNum.toFixed(2)}
                 </td>
             </tr>`;
     });
 
-    const gananciaNetaMes = ingresosMes - gastosMes;
-
-    // 4. INTERFAZ DE RESULTADOS (Sección Caja)
+    // 6. Pintar cuadros de resumen
     resumen.innerHTML = `
-        <div class="bg-blue-600/10 border-2 border-blue-500 p-6 rounded-[2rem] shadow-2xl">
-            <span class="text-[10px] text-blue-400 font-black uppercase block">Caja Total Real</span>
+        <div class="bg-blue-600/10 border border-blue-500/50 p-6 rounded-3xl shadow-2xl">
+            <span class="text-[10px] text-blue-400 font-black uppercase block mb-1">Caja Real</span>
             <p class="text-3xl font-mono text-white font-black">$${saldoTotalGlobal.toFixed(2)}</p>
-            <p class="text-[9px] text-gray-500 mt-1 uppercase">Sobra de meses anteriores: $${saldoAnterior.toFixed(2)}</p>
         </div>
-
-        <div class="bg-gray-800 border border-gray-700 p-6 rounded-[2rem]">
-            <span class="text-[10px] text-green-500 font-black uppercase block">Ingresos del Mes</span>
-            <p class="text-3xl font-mono text-white font-black">$${ingresosMes.toFixed(2)}</p>
-            <p class="text-[9px] text-gray-400 mt-1 uppercase">Ventas brutas</p>
+        <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-3xl">
+            <span class="text-[10px] text-green-500 font-black uppercase block mb-1">Ventas Mes</span>
+            <p class="text-2xl font-mono text-white font-bold">$${ingresosMes.toFixed(2)}</p>
         </div>
-
-        <div class="bg-gray-800 border border-gray-700 p-6 rounded-[2rem]">
-            <span class="text-[10px] text-red-500 font-black uppercase block">Gastos del Mes</span>
-            <p class="text-3xl font-mono text-white font-black">$${gastosMes.toFixed(2)}</p>
-            <p class="text-[9px] text-gray-400 mt-1 uppercase">Inversión y manuales</p>
+        <div class="bg-gray-800/50 border border-gray-700 p-6 rounded-3xl">
+            <span class="text-[10px] text-red-500 font-black uppercase block mb-1">Gastos Mes</span>
+            <p class="text-2xl font-mono text-white font-bold">$${gastosMes.toFixed(2)}</p>
         </div>
     `;
 }
