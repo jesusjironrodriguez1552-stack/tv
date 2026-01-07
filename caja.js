@@ -177,7 +177,7 @@ async function renderizarCaja() {
 
     console.log('💵 Resumen del mes:', { ingresos: ingresosMes, gastos: gastosMes });
 
-    // 11. RENDERIZAR TABLA DE MOVIMIENTOS - ORDENADOS POR FECHA
+    // 11. RENDERIZAR TABLA DE MOVIMIENTOS - SIN CONVERSIONES
     lista.innerHTML = '';
     
     if (movimientosMes.length === 0) {
@@ -193,7 +193,9 @@ async function renderizarCaja() {
         
         // IMPORTANTE: Ordenar por fecha descendente
         const movimientosOrdenados = [...movimientosMes].sort((a, b) => {
-            return new Date(b.fecha) - new Date(a.fecha);
+            const fechaA = a.fecha.split('T')[0];
+            const fechaB = b.fecha.split('T')[0];
+            return fechaB.localeCompare(fechaA);
         });
         
         // Crear todas las filas
@@ -201,29 +203,21 @@ async function renderizarCaja() {
             const esIngreso = item.tipo === 'ingreso';
             const montoNum = parseFloat(item.monto) || 0;
             
-            // PARSEO MANUAL DE FECHA PARA EVITAR CONVERSIÓN UTC
-            const fechaStr = item.fecha.toString().split('T')[0]; // "2026-01-07"
-            const [año, mes, dia] = fechaStr.split('-').map(Number);
+            // SIMPLE: Extraer solo la fecha sin conversión
+            const fechaDB = item.fecha.split('T')[0]; // "2026-01-07"
+            const [año, mes, dia] = fechaDB.split('-'); // ["2026", "01", "07"]
+            const fechaMostrar = `${dia}/${mes}/${año.slice(2)}`; // "07/01/26"
             
-            // Crear fecha LOCAL (no UTC)
-            const fechaObj = new Date(año, mes - 1, dia);
-            
-            const fechaLocal = fechaObj.toLocaleDateString('es-ES', { 
-                day: '2-digit', 
-                month: '2-digit',
-                year: '2-digit'
-            });
-            
-            console.log(`  📅 Fila ${index + 1}: DB="${item.fecha}" → Mostrado="${fechaLocal}"`);
+            console.log(`  📅 Fila ${index + 1}: "${item.fecha}" → "${fechaMostrar}"`);
             
             return `
                 <tr class="hover:bg-gray-700/30 border-b border-gray-800 transition">
-                    <td class="p-4 text-[10px] font-mono text-gray-400">${fechaLocal}</td>
+                    <td class="p-4 text-[10px] font-mono text-gray-400">${fechaMostrar}</td>
                     <td class="p-4 text-xs font-bold uppercase text-white">
                         ${item.descripcion || 'Sin descripción'}
                     </td>
                     <td class="p-4 text-right font-black font-mono ${esIngreso ? 'text-green-400' : 'text-red-400'}">
-                        ${esIngreso ? '+' : '-'}$${montoNum.toFixed(2)}
+                        ${esIngreso ? '+' : '-'}${montoNum.toFixed(2)}
                     </td>
                 </tr>
             `;
