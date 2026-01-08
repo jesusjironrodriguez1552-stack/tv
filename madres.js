@@ -8,15 +8,17 @@ console.log('🖥️ Módulo madres.js cargado');
 async function renderizarMadres() {
     console.log('🔄 Renderizando cuentas madre...');
     
-    // 1. Obtener datos de Supabase usando los nombres reales de tus columnas
+    // 1. Obtener datos de Supabase
     const { data: madres, error } = await _supabase
         .from('cuentas_madre')
         .select('*')
         .order('fecha_vencimiento', { ascending: true });
 
+    // Obtener TODOS los perfiles con información completa
     const { data: perfiles } = await _supabase
         .from('perfiles_clientes')
-        .select('cuenta_madre_id');
+        .select('*, cuentas_madre(plataforma)')
+        .order('fecha_vencimiento', { ascending: true });
 
     const grid = document.getElementById('gridMadresDetalle');
     if (!grid) {
@@ -34,9 +36,6 @@ async function renderizarMadres() {
         grid.innerHTML = `
             <div class="col-span-2 p-8 text-center text-gray-400">
                 📭 No hay cuentas madre registradas
-                <p class="text-xs text-gray-500 mt-2">
-                    Usa el formulario de la izquierda para agregar tu primera cuenta
-                </p>
             </div>
         `;
         return;
@@ -47,15 +46,39 @@ async function renderizarMadres() {
     grid.innerHTML = '';
 
     madres.forEach(m => {
-        // Cálculo de capacidad
-        const ocupados = perfiles?.filter(p => p.cuenta_madre_id === m.id).length || 0;
-        const limite = m.perfiles_totales || 5; // Usar el valor de la base de datos o 5 por defecto
+        // Filtrar perfiles de esta cuenta
+        const perfilesEstaCuenta = perfiles?.filter(p => p.cuenta_madre_id === m.id) || [];
+        const ocupados = perfilesEstaCuenta.length;
+        const limite = m.perfiles_totales || 5;
         const disponibles = limite - ocupados;
         
         // Formatear fecha para alerta visual
         const hoy = new Date();
         const vence = new Date(m.fecha_vencimiento);
         const diasRestantes = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
+
+        // Crear lista de perfiles ocupados
+        const listaPerfiles = perfilesEstaCuenta.length > 0
+            ? perfilesEstaCuenta.map(p => {
+                const diasVence = Math.ceil((new Date(p.fecha_vencimiento) - hoy) / (1000 * 60 * 60 * 24));
+                const colorVence = diasVence <= 0 ? 'text-red-400' : diasVence <= 5 ? 'text-yellow-400' : 'text-green-400';
+                
+                return `
+                    <div class="flex items-center justify-between py-2 px-3 bg-gray-900/50 rounded-lg hover:bg-gray-900 transition">
+                        <div class="flex-1">
+                            <p class="text-xs font-bold text-white">${p.nombre_cliente}</p>
+                            <p class="text-[9px] text-gray-500">${p.perfil_asignado || 'Sin perfil'}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[9px] ${colorVence} font-bold">
+                                ${diasVence <= 0 ? '⚠️ Vencido' : `${diasVence}d`}
+                            </p>
+                            <p class="text-[8px] text-gray-600">${new Date(p.fecha_vencimiento).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('')
+            : '<p class="text-xs text-gray-500 text-center py-4">No hay perfiles asignados</p>';
 
         grid.innerHTML += `
             <div class="bg-gray-800/50 border ${diasRestantes <= 5 ? 'border-red-500/50' : 'border-gray-700'} rounded-[2rem] p-6 shadow-xl relative overflow-hidden transition hover:bg-gray-800">
@@ -88,24 +111,38 @@ async function renderizarMadres() {
                     </div>
                 </div>
 
+                <!-- CAPACIDAD Y DROPDOWN DE PERFILES -->
                 <div class="bg-gray-900/50 p-3 rounded-xl mb-4 border border-gray-700/50">
-                    <p class="text-[9px] text-gray-500 uppercase font-black mb-2">Capacidad de perfiles</p>
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-[10px] text-gray-400">${ocupados} ocupados de ${limite} totales</span>
-                        <span class="text-xs font-bold ${disponibles > 0 ? 'text-green-400' : 'text-red-400'}">
-                            ${disponibles} libres
-                        </span>
+                    <div class="flex items-center justify-between mb-2 cursor-pointer" onclick="togglePerfiles('${m.id}')">
+                        <div>
+                            <p class="text-[9px] text-gray-500 uppercase font-black">Capacidad de perfiles</p>
+                            <p class="text-[10px] text-gray-400">${ocupados} ocupados de ${limite} totales</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-lg font-bold ${disponibles > 0 ? 'text-green-400' : 'text-red-400'}">
+                                ${disponibles}
+                            </span>
+                            <p class="text-[8px] text-gray-500">libres</p>
+                            <span id="arrow-${m.id}" class="text-gray-400 text-xs">▼</span>
+                        </div>
                     </div>
-                    <div class="flex gap-1">
+                    
+                    <!-- Barra de progreso -->
+                    <div class="flex gap-1 mb-3">
                         ${Array.from({ length: limite }, (_, i) => `
                             <div class="flex-1 h-2 rounded-full ${i < ocupados ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-green-500/20'}"></div>
                         `).join('')}
+                    </div>
+                    
+                    <!-- LISTA EXPANDIBLE DE PERFILES -->
+                    <div id="perfiles-${m.id}" class="hidden space-y-2 mt-3 pt-3 border-t border-gray-700/50 max-h-60 overflow-y-auto">
+                        ${listaPerfiles}
                     </div>
                 </div>
 
                 <div class="text-right mb-4">
                     <p class="text-[8px] text-gray-500 uppercase font-black">Inversión</p>
-                    <p class="text-xl font-black font-mono text-yellow-400">$${parseFloat(m.costo_compra || 0).toFixed(2)}</p>
+                    <p class="text-xl font-black font-mono text-yellow-400">${parseFloat(m.costo_compra || 0).toFixed(2)}</p>
                 </div>
 
                 <button onclick="eliminarMadre('${m.id}', '${m.plataforma}')" class="w-full py-2 bg-red-900/10 hover:bg-red-600 border border-red-500/20 text-red-500 hover:text-white text-[10px] font-black uppercase rounded-xl transition-all duration-300">
