@@ -42,6 +42,7 @@ async function renderizarMadres() {
     }
 
     console.log(`✅ ${madres.length} cuentas madre cargadas`);
+    console.log(`📊 ${perfiles?.length || 0} perfiles totales encontrados`);
 
     grid.innerHTML = '';
 
@@ -51,6 +52,14 @@ async function renderizarMadres() {
         const ocupados = perfilesEstaCuenta.length;
         const limite = m.perfiles_totales || 5;
         const disponibles = limite - ocupados;
+        
+        // DEBUG: Ver qué perfiles se encontraron
+        console.log(`📊 Cuenta ${m.plataforma} (ID: ${m.id}):`, {
+            perfilesEncontrados: ocupados,
+            perfilesTotales: limite,
+            disponibles: disponibles,
+            perfiles: perfilesEstaCuenta.map(p => p.nombre_cliente)
+        });
         
         // Formatear fecha para alerta visual
         const hoy = new Date();
@@ -113,7 +122,7 @@ async function renderizarMadres() {
 
                 <!-- CAPACIDAD Y DROPDOWN DE PERFILES -->
                 <div class="bg-gray-900/50 p-3 rounded-xl mb-4 border border-gray-700/50">
-                    <div class="flex items-center justify-between mb-2 cursor-pointer" onclick="togglePerfiles('${m.id}')">
+                    <div class="flex items-center justify-between mb-2 cursor-pointer hover:bg-gray-800/50 p-2 rounded-lg transition" onclick="togglePerfiles('${m.id}')">
                         <div>
                             <p class="text-[9px] text-gray-500 uppercase font-black">Capacidad de perfiles</p>
                             <p class="text-[10px] text-gray-400">${ocupados} ocupados de ${limite} totales</p>
@@ -123,7 +132,7 @@ async function renderizarMadres() {
                                 ${disponibles}
                             </span>
                             <p class="text-[8px] text-gray-500">libres</p>
-                            <span id="arrow-${m.id}" class="text-gray-400 text-xs">▼</span>
+                            <span id="arrow-${m.id}" class="text-gray-400 text-xs block mt-1">▼</span>
                         </div>
                     </div>
                     
@@ -142,7 +151,7 @@ async function renderizarMadres() {
 
                 <div class="text-right mb-4">
                     <p class="text-[8px] text-gray-500 uppercase font-black">Inversión</p>
-                    <p class="text-xl font-black font-mono text-yellow-400">${parseFloat(m.costo_compra || 0).toFixed(2)}</p>
+                    <p class="text-xl font-black font-mono text-yellow-400">$${parseFloat(m.costo_compra || 0).toFixed(2)}</p>
                 </div>
 
                 <button onclick="eliminarMadre('${m.id}', '${m.plataforma}')" class="w-full py-2 bg-red-900/10 hover:bg-red-600 border border-red-500/20 text-red-500 hover:text-white text-[10px] font-black uppercase rounded-xl transition-all duration-300">
@@ -159,11 +168,33 @@ async function renderizarMadres() {
 // UTILIDADES ESPECÍFICAS
 // ============================================
 
+// Toggle para mostrar/ocultar perfiles
+window.togglePerfiles = (madreId) => {
+    const container = document.getElementById(`perfiles-${madreId}`);
+    const arrow = document.getElementById(`arrow-${madreId}`);
+    
+    if (!container || !arrow) {
+        console.error('❌ No se encontró el contenedor de perfiles');
+        return;
+    }
+    
+    const estaOculto = container.classList.contains('hidden');
+    
+    if (estaOculto) {
+        container.classList.remove('hidden');
+        arrow.textContent = '▲';
+        console.log(`✅ Mostrando perfiles de cuenta ${madreId}`);
+    } else {
+        container.classList.add('hidden');
+        arrow.textContent = '▼';
+        console.log(`✅ Ocultando perfiles de cuenta ${madreId}`);
+    }
+};
+
 // Copiar texto al portapapeles
 window.copiarTexto = (texto, tipo) => {
     navigator.clipboard.writeText(texto).then(() => {
         console.log(`✅ ${tipo} copiado: ${texto}`);
-        // Opcional: mostrar toast o notificación
         alert(`✅ ${tipo} copiado al portapapeles`);
     }).catch(err => {
         console.error('❌ Error al copiar:', err);
