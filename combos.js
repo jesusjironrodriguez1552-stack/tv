@@ -10,10 +10,13 @@ console.log('📦 Módulo de combos cargado');
 const PRECIOS_BASE = {
     'NETFLIX': { dias: 40, precio: 12.00, editable: true },
     'DISNEY+': { dias: 7, precio: 7.00, editable: false },
+    'DISNEY': { dias: 7, precio: 7.00, editable: false },
     'HBO MAX': { dias: 7, precio: 7.00, editable: false },
+    'HBO': { dias: 7, precio: 7.00, editable: false },
     'MAX': { dias: 7, precio: 7.00, editable: false },
     'CRUNCHYROLL': { dias: 3, precio: 6.00, editable: false },
-    'PRIME VIDEO': { dias: 3, precio: 9.00, editable: false }
+    'PRIME VIDEO': { dias: 3, precio: 9.00, editable: false },
+    'PRIME': { dias: 3, precio: 9.00, editable: false }
 };
 
 // Combos predefinidos
@@ -97,13 +100,32 @@ async function verificarStockDisponible(plataformas) {
     };
 
     for (const plataforma of plataformas) {
-        // Buscar cuentas madre de esta plataforma
-        const { data: cuentas, error } = await _supabase
+        // Normalizar nombre de plataforma para búsqueda flexible
+        const plataformaNormalizada = plataforma.toUpperCase().trim();
+        
+        // Buscar cuentas madre de esta plataforma (con búsqueda flexible)
+        const { data: todasCuentas, error } = await _supabase
             .from('cuentas_madre')
-            .select('id, plataforma, perfiles_totales')
-            .eq('plataforma', plataforma.toUpperCase());
+            .select('id, plataforma, perfiles_totales');
 
-        if (error || !cuentas || cuentas.length === 0) {
+        if (error) {
+            console.error('❌ Error al consultar cuentas:', error);
+            resultado.disponible = false;
+            resultado.faltantes.push(plataforma);
+            continue;
+        }
+
+        // Filtrar cuentas que coincidan (flexible: HBO MAX = HBO = MAX)
+        const cuentas = todasCuentas?.filter(c => {
+            const nombreCuenta = c.plataforma.toUpperCase().trim();
+            return nombreCuenta === plataformaNormalizada || 
+                   nombreCuenta.includes(plataformaNormalizada) ||
+                   plataformaNormalizada.includes(nombreCuenta);
+        });
+
+        console.log(`📊 Plataforma ${plataforma}: ${cuentas?.length || 0} cuenta(s) encontrada(s)`);
+
+        if (!cuentas || cuentas.length === 0) {
             resultado.disponible = false;
             resultado.faltantes.push(plataforma);
             continue;
@@ -121,12 +143,15 @@ async function verificarStockDisponible(plataformas) {
             const ocupados = perfiles?.length || 0;
             const disponibles = cuenta.perfiles_totales - ocupados;
 
+            console.log(`  📋 Cuenta ${cuenta.id} (${cuenta.plataforma}): ${ocupados}/${cuenta.perfiles_totales} ocupados, ${disponibles} libres`);
+
             if (disponibles > 0) {
                 hayStockEnPlataforma = true;
                 resultado.cuentasDisponibles[plataforma] = {
                     cuenta_id: cuenta.id,
                     disponibles: disponibles
                 };
+                console.log(`  ✅ Stock disponible en cuenta ${cuenta.id}`);
                 break;
             }
         }
@@ -134,6 +159,7 @@ async function verificarStockDisponible(plataformas) {
         if (!hayStockEnPlataforma) {
             resultado.disponible = false;
             resultado.faltantes.push(plataforma);
+            console.log(`  ❌ Sin stock disponible para ${plataforma}`);
         }
     }
 
