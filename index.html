@@ -110,7 +110,19 @@
                     <div class="bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-xl">
                         <h2 class="text-xs font-black text-yellow-500 uppercase mb-6 tracking-widest border-b border-gray-700 pb-2 italic">📂 Nueva Cuenta Madre</h2>
                         <form id="madreForm" class="space-y-4">
-                            <input type="text" id="m_plataforma" placeholder="Plataforma (Netflix, HBO...)" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none text-white" required>
+                            <select id="m_plataforma" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none text-white" required>
+                                <option value="">Seleccionar Plataforma...</option>
+                                <option value="NETFLIX">📺 Netflix</option>
+                                <option value="DISNEY+">🏰 Disney+</option>
+                                <option value="MAX">🎬 Max (HBO Max)</option>
+                                <option value="PRIME VIDEO">📦 Prime Video</option>
+                                <option value="YOUTUBE">▶️ YouTube Premium</option>
+                                <option value="CRUNCHYROLL">🎌 Crunchyroll</option>
+                                <option value="APPLE TV">🍎 Apple TV+</option>
+                                <option value="PARAMOUNT+">⛰️ Paramount+</option>
+                                <option value="DIRECTV">📡 DirecTV</option>
+                                <option value="IPTV">📺 IPTV</option>
+                            </select>
                             <input type="email" id="m_email" placeholder="Correo" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none text-white" required>
                             <input type="text" id="m_password" placeholder="Contraseña / PIN Maestro" class="w-full bg-gray-700 p-4 rounded-2xl border border-gray-600 outline-none text-white" required>
                             
