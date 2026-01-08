@@ -160,6 +160,11 @@ async function renderizarClientes() {
                         </button>` 
                         : ''
                     }
+                    <button onclick="abrirEdicion('${p.id}')" 
+                        class="p-2 bg-yellow-600/20 hover:bg-yellow-600 text-white rounded-lg transition tooltip" 
+                        title="Editar cliente">
+                        ✏️
+                    </button>
                     <button onclick="renovarCliente('${p.id}', '${p.nombre_cliente}')" 
                         class="p-2 bg-blue-600/20 hover:bg-blue-600 text-white rounded-lg transition tooltip" 
                         title="Renovar servicio">
@@ -185,6 +190,15 @@ async function renderizarClientes() {
 }
 
 // ============================================
+// AUTO-COMPLETAR FECHA DE VENTA CON HOY
+// ============================================
+const inputFechaVenta = document.getElementById('fecha_venta');
+if (inputFechaVenta && !inputFechaVenta.value) {
+    inputFechaVenta.value = new Date().toISOString().split('T')[0];
+    console.log('📅 Campo fecha_venta auto-completado con hoy');
+}
+
+// ============================================
 // FORMULARIO DE REGISTRO DE VENTAS
 // ============================================
 const formPerfil = document.getElementById('perfilForm');
@@ -197,11 +211,12 @@ if (formPerfil) {
         const whatsapp = document.getElementById('whatsapp').value.trim();
         const cuentaMadreId = document.getElementById('cuenta_madre_id').value;
         const perfilAsignado = document.getElementById('perfil_asignado').value.trim();
+        const fechaVenta = document.getElementById('fecha_venta').value; // NUEVA: Fecha de venta
         const fechaVencimiento = document.getElementById('vencimiento_cliente').value;
         const montoVenta = parseFloat(document.getElementById('monto').value);
 
         // Validaciones
-        if (!nombreCliente || !cuentaMadreId || !perfilAsignado || !fechaVencimiento || !montoVenta) {
+        if (!nombreCliente || !cuentaMadreId || !perfilAsignado || !fechaVenta || !fechaVencimiento || !montoVenta) {
             alert('⚠️ Por favor completa todos los campos obligatorios');
             return;
         }
@@ -422,6 +437,114 @@ window.abrirMigrar = (id) => {
     console.log(`⇄ Abriendo migración para cliente ${id}`);
     document.getElementById('migrar_perfil_id').value = id;
     document.getElementById('modalMigrar').classList.remove('hidden');
+};
+
+// ============================================
+// FUNCIONES DE EDICIÓN DE CLIENTE
+// ============================================
+
+// Abrir modal de edición
+window.abrirEdicion = async (id) => {
+    console.log(`✏️ Abriendo edición para cliente ${id}`);
+    
+    try {
+        // Obtener datos actuales del cliente
+        const { data: cliente, error } = await _supabase
+            .from('perfiles_clientes')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            console.error('❌ Error al consultar cliente:', error);
+            alert('❌ Error al cargar los datos del cliente');
+            return;
+        }
+
+        console.log('📋 Datos del cliente:', cliente);
+
+        // Rellenar el formulario
+        document.getElementById('editar_cliente_id').value = cliente.id;
+        document.getElementById('editar_nombre').value = cliente.nombre_cliente || '';
+        document.getElementById('editar_whatsapp').value = cliente.whatsapp || '';
+        document.getElementById('editar_perfil').value = cliente.perfil_asignado || '';
+        document.getElementById('editar_precio').value = cliente.precio_venta || '';
+        document.getElementById('editar_vencimiento').value = cliente.fecha_vencimiento || '';
+
+        // Mostrar modal
+        document.getElementById('modalEditar').classList.remove('hidden');
+
+    } catch (err) {
+        console.error('❌ Error inesperado:', err);
+        alert('❌ Error al abrir el editor');
+    }
+};
+
+// Cerrar modal de edición
+window.cerrarModalEditar = () => {
+    console.log('🔒 Cerrando modal de edición');
+    document.getElementById('modalEditar').classList.add('hidden');
+};
+
+// Guardar edición
+window.guardarEdicion = async () => {
+    console.log('💾 Guardando edición...');
+    
+    const id = document.getElementById('editar_cliente_id').value;
+    const nombre = document.getElementById('editar_nombre').value.trim();
+    const whatsapp = document.getElementById('editar_whatsapp').value.trim();
+    const perfil = document.getElementById('editar_perfil').value.trim();
+    const precio = parseFloat(document.getElementById('editar_precio').value);
+    const vencimiento = document.getElementById('editar_vencimiento').value;
+
+    // Validaciones
+    if (!nombre || !perfil || !precio || !vencimiento) {
+        alert('⚠️ Por favor completa todos los campos obligatorios');
+        return;
+    }
+
+    if (precio <= 0) {
+        alert('⚠️ El precio debe ser mayor a 0');
+        return;
+    }
+
+    try {
+        // Actualizar cliente
+        const { error } = await _supabase
+            .from('perfiles_clientes')
+            .update({
+                nombre_cliente: nombre,
+                whatsapp: whatsapp || null,
+                perfil_asignado: perfil,
+                precio_venta: precio,
+                fecha_vencimiento: vencimiento
+            })
+            .eq('id', id);
+
+        if (error) {
+            console.error('❌ Error al actualizar:', error);
+            alert(`❌ Error al guardar cambios: ${error.message}`);
+            return;
+        }
+
+        console.log('✅ Cliente actualizado');
+        
+        // Cerrar modal
+        window.cerrarModalEditar();
+        
+        // Actualizar interfaz
+        alert(`✅ Cliente "${nombre}" actualizado correctamente`);
+        
+        if (typeof renderizarTodo === 'function') {
+            await renderizarTodo();
+        } else if (typeof renderizarClientes === 'function') {
+            await renderizarClientes();
+        }
+
+    } catch (err) {
+        console.error('❌ Error inesperado:', err);
+        alert('❌ Error al guardar cambios');
+    }
 };
 
 // Borrar cliente
