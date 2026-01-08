@@ -26,6 +26,36 @@ function obtenerFechaLocalFallback() {
 }
 
 // ============================================
+// FUNCIÓN MEJORADA PARA CALCULAR DÍAS RESTANTES
+// ============================================
+function calcularDiasRestantes(fechaVencimiento) {
+    // Obtener fecha local de Perú (Lima)
+    const ahora = new Date();
+    const añoLocal = ahora.getFullYear();
+    const mesLocal = ahora.getMonth(); // 0-11
+    const diaLocal = ahora.getDate();
+    
+    // Crear fecha de hoy a las 00:00:00 hora local
+    const hoy = new Date(añoLocal, mesLocal, diaLocal);
+    
+    // Parsear fecha de vencimiento (viene como YYYY-MM-DD)
+    const [año, mes, dia] = fechaVencimiento.split('-').map(Number);
+    const vence = new Date(año, mes - 1, dia); // mes - 1 porque Date usa 0-11
+    
+    // Calcular diferencia en milisegundos y convertir a días
+    const diferenciaMilisegundos = vence - hoy;
+    const diasRestantes = Math.ceil(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
+    
+    console.log(`📅 Cálculo de días:`, {
+        hoy: hoy.toLocaleDateString('es-PE'),
+        vence: vence.toLocaleDateString('es-PE'),
+        diasRestantes: diasRestantes
+    });
+    
+    return diasRestantes;
+}
+
+// ============================================
 // FUNCIÓN PRINCIPAL DE RENDERIZADO
 // ============================================
 async function renderizarClientes() {
@@ -72,19 +102,15 @@ async function renderizarClientes() {
 
     console.log(`✅ ${perfiles.length} clientes cargados`);
 
-    // 2. Preparar fecha actual
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-
-    // 3. Limpiar tabla
+    // 2. Limpiar tabla
     tabla.innerHTML = '';
 
-    // 4. Renderizar cada cliente
+    // 3. Renderizar cada cliente
     perfiles.forEach(p => {
-        const vence = new Date(p.fecha_vencimiento);
-        const diasRestantes = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
-        const estaVencido = diasRestantes <= 0;
-        const porVencer = diasRestantes > 0 && diasRestantes <= 7;
+        // USAR LA NUEVA FUNCIÓN DE CÁLCULO
+        const diasRestantes = calcularDiasRestantes(p.fecha_vencimiento);
+        const estaVencido = diasRestantes < 0;
+        const porVencer = diasRestantes >= 0 && diasRestantes <= 7;
         const cuentaMadre = p.cuentas_madre;
 
         // Determinar color y estilo según estado
@@ -97,6 +123,11 @@ async function renderizarClientes() {
             estadoTexto = 'text-red-400';
             estadoBadge = 'bg-red-600 text-white animate-pulse';
             estadoTexto = '⚠️ VENCIDO';
+        } else if (diasRestantes === 0) {
+            estadoClase = 'bg-red-900/10 border-l-4 border-red-500';
+            estadoTexto = 'text-red-400';
+            estadoBadge = 'bg-red-600 text-white animate-pulse';
+            estadoTexto = '⚠️ VENCE HOY';
         } else if (porVencer) {
             estadoClase = 'bg-yellow-900/10 border-l-4 border-yellow-500';
             estadoTexto = 'text-yellow-400';
@@ -135,7 +166,7 @@ async function renderizarClientes() {
             </td>
             <td class="p-4 text-center">
                 <span class="px-3 py-1 rounded-full text-[10px] font-black ${estadoBadge}">
-                    ${new Date(p.fecha_vencimiento).toLocaleDateString('es-ES')}
+                    ${new Date(p.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-PE')}
                 </span>
                 <p class="text-[8px] mt-1 ${estadoTexto} uppercase font-bold">
                     ${estadoTexto}
@@ -211,7 +242,7 @@ if (formPerfil) {
         const whatsapp = document.getElementById('whatsapp').value.trim();
         const cuentaMadreId = document.getElementById('cuenta_madre_id').value;
         const perfilAsignado = document.getElementById('perfil_asignado').value.trim();
-        const fechaVenta = document.getElementById('fecha_venta').value; // NUEVA: Fecha de venta
+        const fechaVenta = document.getElementById('fecha_venta').value;
         const fechaVencimiento = document.getElementById('vencimiento_cliente').value;
         const montoVenta = parseFloat(document.getElementById('monto').value);
 
@@ -255,7 +286,7 @@ if (formPerfil) {
                     tipo: 'ingreso',
                     monto: montoVenta,
                     descripcion: `Venta de perfil: ${nombreCliente}`,
-                    fecha: new Date().toISOString().split('T')[0] // Solo fecha: YYYY-MM-DD
+                    fecha: fechaVenta // Usar la fecha de venta que ingresó el usuario
                 }]);
 
             if (errorCaja) {
@@ -299,9 +330,12 @@ window.enviarRecordatorio = (nombre, whatsapp, plataforma, diasRestantes) => {
     // Crear mensaje personalizado según estado
     let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
     
-    if (diasRestantes <= 0) {
-        mensaje += `Te recordamos que tu servicio de *${plataforma}* *ha vencido hoy*. 😔\n\n`;
+    if (diasRestantes < 0) {
+        mensaje += `Te recordamos que tu servicio de *${plataforma}* *ya venció* hace ${Math.abs(diasRestantes)} día${Math.abs(diasRestantes) > 1 ? 's' : ''}. 😔\n\n`;
         mensaje += `¿Deseas renovarlo para seguir disfrutando de tu mismo perfil? 🎬\n\n`;
+    } else if (diasRestantes === 0) {
+        mensaje += `Te recordamos que tu servicio de *${plataforma}* *vence HOY*. ⚠️\n\n`;
+        mensaje += `Renueva ahora para no perder tu perfil 🎬\n\n`;
     } else if (diasRestantes <= 3) {
         mensaje += `Tu servicio de *${plataforma}* vence en *${diasRestantes} día${diasRestantes > 1 ? 's' : ''}* ⏰\n\n`;
         mensaje += `Renueva ahora para no perder tu perfil y seguir disfrutando sin interrupciones 🎬\n\n`;
@@ -387,16 +421,19 @@ window.renovarCliente = async (id, nombre) => {
             return;
         }
 
-        // Calcular nueva fecha (desde la fecha actual de vencimiento)
-        const fechaActual = new Date(cliente.fecha_vencimiento);
+        // Calcular nueva fecha desde la fecha actual de vencimiento
+        const [año, mes, dia] = cliente.fecha_vencimiento.split('-').map(Number);
+        const fechaActual = new Date(año, mes - 1, dia);
         const nuevaFecha = new Date(fechaActual);
         nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
+        
+        const nuevaFechaStr = `${nuevaFecha.getFullYear()}-${String(nuevaFecha.getMonth() + 1).padStart(2, '0')}-${String(nuevaFecha.getDate()).padStart(2, '0')}`;
 
         // Actualizar cliente
         const { error: errorUpdate } = await _supabase
             .from('perfiles_clientes')
             .update({ 
-                fecha_vencimiento: nuevaFecha.toISOString().split('T')[0],
+                fecha_vencimiento: nuevaFechaStr,
                 precio_venta: parseFloat(monto)
             })
             .eq('id', id);
@@ -406,19 +443,18 @@ window.renovarCliente = async (id, nombre) => {
             return;
         }
 
-        // Registrar ingreso en caja
-        const fechaHoy = window.obtenerFechaLocal ? window.obtenerFechaLocal() : obtenerFechaLocalFallback();
-        
-        console.log('📅 Registrando renovación con fecha:', fechaHoy);
+        // Registrar ingreso en caja con fecha de HOY
+        const hoy = new Date();
+        const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
         
         await _supabase.from('flujo_caja').insert([{
             tipo: 'ingreso',
             monto: parseFloat(monto),
             descripcion: `Renovación: ${nombre}`,
-            fecha: fechaHoy // Usar fecha local correcta
+            fecha: fechaHoy
         }]);
 
-        alert(`✅ Cliente renovado exitosamente\n\nNueva fecha: ${nuevaFecha.toLocaleDateString('es-ES')}\nMonto: $${parseFloat(monto).toFixed(2)}`);
+        alert(`✅ Cliente renovado exitosamente\n\nNueva fecha: ${nuevaFecha.toLocaleDateString('es-PE')}\nMonto: $${parseFloat(monto).toFixed(2)}`);
         
         if (typeof renderizarTodo === 'function') {
             await renderizarTodo();
