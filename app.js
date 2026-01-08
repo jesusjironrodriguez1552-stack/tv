@@ -47,6 +47,14 @@ async function renderizarTodo() {
             console.warn('⚠️ renderizarCaja() no está definida');
         }
         
+        // Renderizar Catálogo de Combos
+        if (typeof renderizarCatalogoCombos === 'function') {
+            console.log('🛒 Renderizando catálogo de combos...');
+            await renderizarCatalogoCombos();
+        } else {
+            console.warn('⚠️ renderizarCatalogoCombos() no está definida');
+        }
+        
         // Actualizar selectores de los formularios
         actualizarSelectoresGlobales();
         
@@ -121,6 +129,15 @@ function configurarTabs() {
                 console.log('✅ Clientes renderizados');
             } else {
                 console.error('❌ renderizarClientes() no está disponible');
+            }
+        }
+        else if (id === 'seccion-combos') {
+            console.log('🛒 Ejecutando renderizado de Catálogo de Combos...');
+            if (typeof renderizarCatalogoCombos === 'function') {
+                await renderizarCatalogoCombos();
+                console.log('✅ Catálogo de combos renderizado');
+            } else {
+                console.error('❌ renderizarCatalogoCombos() no está disponible');
             }
         }
     };
@@ -244,4 +261,5 @@ console.log('  - filtrarTabla()');
 console.log('  - cerrarModal()');
 console.log('  - confirmarMigracion()');
 console.log('  - renderizarTodo()');
+console.log('  - renderizarCatalogoCombos()');
 console.log('🎯 Sistema CVSE listo para usar');
