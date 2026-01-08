@@ -10,13 +10,14 @@ console.log('📦 Módulo de combos cargado');
 const PRECIOS_BASE = {
     'NETFLIX': { dias: 40, precio: 12.00, editable: true },
     'DISNEY+': { dias: 7, precio: 7.00, editable: false },
-    'DISNEY': { dias: 7, precio: 7.00, editable: false },
-    'HBO MAX': { dias: 7, precio: 7.00, editable: false },
-    'HBO': { dias: 7, precio: 7.00, editable: false },
     'MAX': { dias: 7, precio: 7.00, editable: false },
-    'CRUNCHYROLL': { dias: 3, precio: 6.00, editable: false },
     'PRIME VIDEO': { dias: 3, precio: 9.00, editable: false },
-    'PRIME': { dias: 3, precio: 9.00, editable: false }
+    'YOUTUBE': { dias: 30, precio: 8.00, editable: false },
+    'CRUNCHYROLL': { dias: 3, precio: 6.00, editable: false },
+    'APPLE TV': { dias: 7, precio: 8.00, editable: false },
+    'PARAMOUNT+': { dias: 7, precio: 7.00, editable: false },
+    'DIRECTV': { dias: 30, precio: 15.00, editable: false },
+    'IPTV': { dias: 30, precio: 10.00, editable: false }
 };
 
 // Combos predefinidos
@@ -32,13 +33,13 @@ const COMBOS_PREDEFINIDOS = {
         nombre: '✅ Dúo Max',
         plataformas: ['NETFLIX', 'MAX'],
         precio: 17.50,
-        descripcion: 'Netflix + HBO Max para los mejores estrenos'
+        descripcion: 'Netflix + Max para los mejores estrenos'
     },
     'duo_prime': {
         nombre: '✅ Dúo Prime',
         plataformas: ['NETFLIX', 'PRIME VIDEO'],
         precio: 18.50,
-        descripcion: 'Netflix + Amazon Prime Video'
+        descripcion: 'Netflix + Prime Video'
     },
     'duo_junior': {
         nombre: '👶 Dúo Junior',
@@ -182,43 +183,9 @@ async function renderizarCatalogoCombos() {
 
     let html = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">';
 
-    // SECCIÓN 1: PLATAFORMAS INDIVIDUALES
+    // SECCIÓN 1: DÚOS
     html += `
         <div class="col-span-full">
-            <h3 class="text-2xl font-black text-yellow-400 mb-4 flex items-center gap-2">
-                📺 PLATAFORMAS INDIVIDUALES
-            </h3>
-        </div>
-    `;
-
-    for (const [plataforma, datos] of Object.entries(PRECIOS_BASE)) {
-        const stock = await verificarStockDisponible([plataforma]);
-        const disponible = stock.disponible;
-        const stockInfo = disponible ? stock.cuentasDisponibles[plataforma] : null;
-
-        html += `
-            <div class="bg-gray-800/50 border ${disponible ? 'border-green-500/30' : 'border-red-500/50'} rounded-2xl p-6 relative">
-                ${!disponible ? '<div class="absolute top-4 right-4 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-black animate-pulse">SIN STOCK</div>' : ''}
-                <h4 class="text-xl font-black text-white mb-2">${plataforma}</h4>
-                <p class="text-gray-400 text-sm mb-4">${datos.dias} días de servicio</p>
-                <p class="text-3xl font-black text-yellow-400 mb-4">S/ ${datos.precio.toFixed(2)}</p>
-                ${disponible ? 
-                    `<p class="text-xs text-green-400 mb-4">✅ ${stockInfo.disponibles} perfil(es) disponible(s)</p>` :
-                    `<p class="text-xs text-red-400 mb-4">❌ No hay perfiles libres</p>`
-                }
-                <button 
-                    onclick="seleccionarProducto('individual', '${plataforma}', ${datos.precio}, ${datos.dias})"
-                    class="${disponible ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-600 cursor-not-allowed'} w-full py-3 rounded-xl font-black text-white transition"
-                    ${!disponible ? 'disabled' : ''}>
-                    ${disponible ? '🛒 VENDER' : '❌ SIN STOCK'}
-                </button>
-            </div>
-        `;
-    }
-
-    // SECCIÓN 2: DÚOS
-    html += `
-        <div class="col-span-full mt-8">
             <h3 class="text-2xl font-black text-cyan-400 mb-4 flex items-center gap-2">
                 🤝 COMBOS DÚOS
             </h3>
@@ -248,7 +215,7 @@ async function renderizarCatalogoCombos() {
         `;
     }
 
-    // SECCIÓN 3: TRÍOS
+    // SECCIÓN 2: TRÍOS
     html += `
         <div class="col-span-full mt-8">
             <h3 class="text-2xl font-black text-purple-400 mb-4 flex items-center gap-2">
@@ -292,29 +259,25 @@ async function renderizarCatalogoCombos() {
 window.seleccionarProducto = async (tipo, identificador, precio, dias) => {
     console.log(`🛒 Producto seleccionado:`, { tipo, identificador, precio });
 
-    // Abrir modal de venta y prellenar datos
     const modalVenta = document.getElementById('modalVentaCombo');
     if (!modalVenta) {
         alert('❌ Error: No se encontró el modal de venta');
         return;
     }
 
-    // Determinar qué plataformas incluye
-    let plataformas = [];
-    let nombreProducto = '';
-    
-    if (tipo === 'individual') {
-        plataformas = [identificador];
-        nombreProducto = identificador;
-        document.getElementById('venta_dias').value = dias;
-    } else {
-        const combo = COMBOS_PREDEFINIDOS[identificador];
-        plataformas = combo.plataformas;
-        nombreProducto = combo.nombre;
-        // Para combos, usar el menor número de días
-        const diasMinimos = Math.min(...plataformas.map(p => PRECIOS_BASE[p]?.dias || 30));
-        document.getElementById('venta_dias').value = diasMinimos;
+    // Obtener información del combo
+    const combo = COMBOS_PREDEFINIDOS[identificador];
+    if (!combo) {
+        alert('❌ Error: Combo no encontrado');
+        return;
     }
+
+    const plataformas = combo.plataformas;
+    const nombreProducto = combo.nombre;
+    
+    // Para combos, usar el menor número de días
+    const diasMinimos = Math.min(...plataformas.map(p => PRECIOS_BASE[p]?.dias || 30));
+    document.getElementById('venta_dias').value = diasMinimos;
 
     // Verificar stock nuevamente
     const stock = await verificarStockDisponible(plataformas);
