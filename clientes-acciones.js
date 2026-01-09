@@ -301,3 +301,191 @@ window.borrarCliente = async (id, nombre) => {
 };
 
 console.log('✅ Módulo clientes-acciones.js inicializado');
+
+// ============================================
+// FUNCIONES ESPECIALES PARA COMBOS
+// ============================================
+
+// Renovar combo completo
+window.renovarCombo = async (comboId) => {
+    console.log(`🔄 Renovando combo ${comboId}...`);
+    
+    // Obtener todos los perfiles del combo
+    const { data: perfiles, error } = await _supabase
+        .from('perfiles_clientes')
+        .select('*')
+        .eq('combo_id', comboId);
+    
+    if (error || !perfiles || perfiles.length === 0) {
+        alert('❌ Error al cargar el combo');
+        return;
+    }
+    
+    const nombreCliente = perfiles[0].nombre_cliente;
+    const cantidadPlataformas = perfiles.length;
+    
+    const dias = prompt(
+        `🔄 Renovar combo de ${nombreCliente}\n` +
+        `${cantidadPlataformas} plataformas incluidas\n\n` +
+        `¿Por cuántos días deseas renovar?`, 
+        '30'
+    );
+    
+    if (!dias || isNaN(dias) || parseInt(dias) <= 0) {
+        return;
+    }
+
+    const monto = prompt(`¿Cuánto pagó ${nombreCliente} por la renovación del combo?`, '');
+    if (!monto || isNaN(monto) || parseFloat(monto) <= 0) {
+        return;
+    }
+
+    try {
+        // Calcular nueva fecha
+        const [año, mes, dia] = perfiles[0].fecha_vencimiento.split('-').map(Number);
+        const fechaActual = new Date(año, mes - 1, dia);
+        const nuevaFecha = new Date(fechaActual);
+        nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
+        
+        const nuevaFechaStr = `${nuevaFecha.getFullYear()}-${String(nuevaFecha.getMonth() + 1).padStart(2, '0')}-${String(nuevaFecha.getDate()).padStart(2, '0')}`;
+
+        // Actualizar TODOS los perfiles del combo
+        const { error: errorUpdate } = await _supabase
+            .from('perfiles_clientes')
+            .update({ 
+                fecha_vencimiento: nuevaFechaStr,
+                precio_venta: parseFloat(monto)
+            })
+            .eq('combo_id', comboId);
+
+        if (errorUpdate) {
+            alert('❌ Error al renovar combo');
+            return;
+        }
+
+        // Registrar ingreso en caja
+        const hoy = new Date();
+        const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+        
+        await _supabase.from('flujo_caja').insert([{
+            tipo: 'ingreso',
+            monto: parseFloat(monto),
+            descripcion: `Renovación Combo: ${nombreCliente} (${cantidadPlataformas} plataformas)`,
+            fecha: fechaHoy
+        }]);
+
+        alert(
+            `✅ Combo renovado exitosamente\n\n` +
+            `Cliente: ${nombreCliente}\n` +
+            `Plataformas: ${cantidadPlataformas}\n` +
+            `Nueva fecha: ${nuevaFecha.toLocaleDateString('es-PE')}\n` +
+            `Monto: $${parseFloat(monto).toFixed(2)}`
+        );
+        
+        if (typeof renderizarTodo === 'function') {
+            await renderizarTodo();
+        }
+
+    } catch (err) {
+        console.error('❌ Error en renovación de combo:', err);
+        alert('❌ Error al renovar combo');
+    }
+};
+
+// Eliminar combo completo
+window.borrarCombo = async (comboId) => {
+    console.log(`🗑️ Eliminando combo ${comboId}...`);
+    
+    // Obtener información del combo
+    const { data: perfiles } = await _supabase
+        .from('perfiles_clientes')
+        .select('*')
+        .eq('combo_id', comboId);
+    
+    if (!perfiles || perfiles.length === 0) {
+        alert('❌ No se encontró el combo');
+        return;
+    }
+    
+    const nombreCliente = perfiles[0].nombre_cliente;
+    const cantidadPlataformas = perfiles.length;
+    
+    const confirmacion = confirm(
+        `⚠️ ¿Eliminar el combo completo de ${nombreCliente}?\n\n` +
+        `Se eliminarán ${cantidadPlataformas} plataformas:\n` +
+        perfiles.map(p => `• ${p.cuentas_madre?.plataforma || 'Plataforma'}`).join('\n') +
+        `\n\n¿Continuar?`
+    );
+    
+    if (!confirmacion) {
+        return;
+    }
+
+    try {
+        const { error } = await _supabase
+            .from('perfiles_clientes')
+            .delete()
+            .eq('combo_id', comboId);
+
+        if (error) {
+            alert('❌ Error al eliminar combo');
+            return;
+        }
+
+        alert(`✅ Combo de ${nombreCliente} eliminado correctamente`);
+        
+        if (typeof renderizarTodo === 'function') {
+            await renderizarTodo();
+        }
+
+    } catch (err) {
+        console.error('❌ Error al eliminar combo:', err);
+        alert('❌ Error al eliminar combo');
+    }
+};
+
+// Enviar recordatorio de combo
+window.enviarRecordatorioCombo = async (comboId) => {
+    console.log(`📲 Enviando recordatorio de combo ${comboId}...`);
+    
+    const { data: perfiles } = await _supabase
+        .from('perfiles_clientes')
+        .select('*, cuentas_madre(*)')
+        .eq('combo_id', comboId);
+    
+    if (!perfiles || perfiles.length === 0) {
+        alert('❌ No se encontró el combo');
+        return;
+    }
+    
+    const primerPerfil = perfiles[0];
+    const whatsapp = primerPerfil.whatsapp;
+    
+    if (!whatsapp) {
+        alert("⚠️ Este cliente no tiene WhatsApp registrado");
+        return;
+    }
+
+    const diasRestantes = calcularDiasRestantes(primerPerfil.fecha_vencimiento);
+    const numeroLimpio = whatsapp.replace(/\D/g, '');
+    const plataformas = perfiles.map(p => p.cuentas_madre?.plataforma).join(', ');
+    
+    let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
+    
+    if (diasRestantes < 0) {
+        mensaje += `Te recordamos que tu COMBO (${plataformas}) *ya venció* hace ${Math.abs(diasRestantes)} día${Math.abs(diasRestantes) > 1 ? 's' : ''}. 😔\n\n`;
+    } else if (diasRestantes === 0) {
+        mensaje += `Tu COMBO (${plataformas}) *vence HOY*. ⚠️\n\n`;
+    } else if (diasRestantes <= 3) {
+        mensaje += `Tu COMBO (${plataformas}) vence en *${diasRestantes} día${diasRestantes > 1 ? 's' : ''}* ⏰\n\n`;
+    } else {
+        mensaje += `Tu COMBO (${plataformas}) vence en *${diasRestantes} días* 📅\n\n`;
+    }
+    
+    mensaje += `¿Deseas renovar? Contáctanos 🎬\n\n${CONFIG_NEGOCIO.despedida}`;
+
+    const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
+};
+
+console.log('✅ Funciones de combos agregadas');
