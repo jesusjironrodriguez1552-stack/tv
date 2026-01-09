@@ -149,10 +149,17 @@ async function renderizarMadres() {
                     </div>
                 </div>
 
-                <div class="text-right mb-4">
-                    <p class="text-[8px] text-gray-500 uppercase font-black">Inversión</p>
-                    <p class="text-xl font-black font-mono text-yellow-400">$${parseFloat(m.costo_compra || 0).toFixed(2)}</p>
-                </div>
+                ${m.costo_compra && m.costo_compra > 0 ? `
+                    <div class="text-right mb-4">
+                        <p class="text-[8px] text-gray-500 uppercase font-black">Inversión</p>
+                        <p class="text-xl font-black font-mono text-yellow-400">$${parseFloat(m.costo_compra).toFixed(2)}</p>
+                    </div>
+                ` : `
+                    <div class="text-right mb-4">
+                        <p class="text-[8px] text-gray-500 uppercase font-black">Inversión</p>
+                        <p class="text-xs text-gray-600 italic">Sin costo registrado</p>
+                    </div>
+                `}
 
                 <button onclick="eliminarMadre('${m.id}', '${m.plataforma}')" class="w-full py-2 bg-red-900/10 hover:bg-red-600 border border-red-500/20 text-red-500 hover:text-white text-[10px] font-black uppercase rounded-xl transition-all duration-300">
                     🗑️ Eliminar Cuenta
@@ -259,17 +266,13 @@ if (formMadre) {
         const email = document.getElementById('m_email').value.trim();
         const password = document.getElementById('m_password').value.trim();
         const vencimiento = document.getElementById('m_vencimiento').value;
-        const costo = parseFloat(document.getElementById('m_costo').value);
+        const costoInput = document.getElementById('m_costo').value.trim();
+        const costo = costoInput ? parseFloat(costoInput) : 0; // ✅ AHORA ES OPCIONAL
         const perfilesTotales = parseInt(document.getElementById('m_perfiles_totales').value) || 5;
 
-        // Validaciones
-        if (!plataforma || !email || !password || !vencimiento || !costo) {
-            alert('⚠️ Por favor completa todos los campos');
-            return;
-        }
-
-        if (costo <= 0) {
-            alert('⚠️ El costo debe ser mayor a 0');
+        // Validaciones básicas (SIN VALIDAR COSTO)
+        if (!plataforma || !email || !password || !vencimiento) {
+            alert('⚠️ Por favor completa los campos obligatorios:\n- Plataforma\n- Correo\n- Contraseña\n- Fecha de vencimiento');
             return;
         }
 
@@ -287,7 +290,7 @@ if (formMadre) {
                     email_cuenta: email,
                     password_cuenta: password,
                     fecha_vencimiento: vencimiento,
-                    costo_compra: costo,
+                    costo_compra: costo, // ✅ Puede ser 0
                     perfiles_totales: perfilesTotales
                 }])
                 .select();
@@ -300,30 +303,30 @@ if (formMadre) {
 
             console.log('✅ Cuenta madre registrada:', nuevaMadre);
 
-            // 2. Registrar el gasto automáticamente en flujo de caja
-            const { error: errorCaja } = await _supabase
-                .from('flujo_caja')
-                .insert([{
-                    tipo: 'egreso',
-                    monto: costo,
-                    descripcion: `Compra Madre: ${plataforma.toUpperCase()}`,
-                    fecha: obtenerFechaLocal() // Usar fecha local correcta
-                }]);
+            // 2. Registrar gasto SOLO si tiene costo
+            if (costo > 0) {
+                const { error: errorCaja } = await _supabase
+                    .from('flujo_caja')
+                    .insert([{
+                        tipo: 'egreso',
+                        monto: costo,
+                        descripcion: `Compra Madre: ${plataforma.toUpperCase()}`,
+                        fecha: obtenerFechaLocal()
+                    }]);
 
-            if (errorCaja) {
-                console.warn('⚠️ Cuenta guardada pero error en caja:', errorCaja);
+                if (errorCaja) {
+                    console.warn('⚠️ Cuenta guardada pero error en caja:', errorCaja);
+                }
             }
 
             // 3. Limpiar formulario
             e.target.reset();
             
-            alert(
-                `✅ ¡Cuenta madre registrada!\n\n` +
-                `Plataforma: ${plataforma.toUpperCase()}\n` +
-                `Costo: $${costo.toFixed(2)}\n` +
-                `Perfiles disponibles: ${perfilesTotales}\n\n` +
-                `El gasto se registró automáticamente en Balance Mensual`
-            );
+            const mensaje = costo > 0 
+                ? `✅ ¡Cuenta madre registrada!\n\nPlataforma: ${plataforma.toUpperCase()}\nCosto: $${costo.toFixed(2)}\nPerfiles disponibles: ${perfilesTotales}\n\nEl gasto se registró automáticamente en Balance Mensual`
+                : `✅ ¡Cuenta madre registrada!\n\nPlataforma: ${plataforma.toUpperCase()}\nSin costo registrado\nPerfiles disponibles: ${perfilesTotales}`;
+            
+            alert(mensaje);
 
             console.log('✅ Cuenta madre completada');
 
