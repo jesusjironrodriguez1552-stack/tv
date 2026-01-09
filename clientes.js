@@ -1,5 +1,5 @@
-// clientes.js - ESPECIALISTA EN GESTIÓN DE CLIENTES Y VENTAS
-// Módulo mejorado con mejor UX y mensajes personalizados
+// clientes.js - PARTE 1: GESTIÓN PRINCIPAL DE CLIENTES
+// Módulo mejorado con protección contra doble clic
 
 console.log('👥 Módulo clientes.js cargado');
 
@@ -13,7 +13,7 @@ const CONFIG_NEGOCIO = {
 };
 
 // ============================================
-// FUNCIÓN FALLBACK DE FECHA (por si utilidades.js no carga)
+// FUNCIÓN FALLBACK DE FECHA
 // ============================================
 function obtenerFechaLocalFallback() {
     const ahora = new Date();
@@ -29,20 +29,16 @@ function obtenerFechaLocalFallback() {
 // FUNCIÓN MEJORADA PARA CALCULAR DÍAS RESTANTES
 // ============================================
 function calcularDiasRestantes(fechaVencimiento) {
-    // Obtener fecha local de Perú (Lima)
     const ahora = new Date();
     const añoLocal = ahora.getFullYear();
-    const mesLocal = ahora.getMonth(); // 0-11
+    const mesLocal = ahora.getMonth();
     const diaLocal = ahora.getDate();
     
-    // Crear fecha de hoy a las 00:00:00 hora local
     const hoy = new Date(añoLocal, mesLocal, diaLocal);
     
-    // Parsear fecha de vencimiento (viene como YYYY-MM-DD)
     const [año, mes, dia] = fechaVencimiento.split('-').map(Number);
-    const vence = new Date(año, mes - 1, dia); // mes - 1 porque Date usa 0-11
+    const vence = new Date(año, mes - 1, dia);
     
-    // Calcular diferencia en milisegundos y convertir a días
     const diferenciaMilisegundos = vence - hoy;
     const diasRestantes = Math.ceil(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
     
@@ -67,7 +63,6 @@ async function renderizarClientes() {
         return;
     }
 
-    // 1. Obtener datos con JOIN a cuentas madre
     const { data: perfiles, error } = await _supabase
         .from('perfiles_clientes')
         .select('*, cuentas_madre(*)')
@@ -102,18 +97,14 @@ async function renderizarClientes() {
 
     console.log(`✅ ${perfiles.length} clientes cargados`);
 
-    // 2. Limpiar tabla
     tabla.innerHTML = '';
 
-    // 3. Renderizar cada cliente
     perfiles.forEach(p => {
-        // USAR LA NUEVA FUNCIÓN DE CÁLCULO
         const diasRestantes = calcularDiasRestantes(p.fecha_vencimiento);
         const estaVencido = diasRestantes < 0;
         const porVencer = diasRestantes >= 0 && diasRestantes <= 7;
         const cuentaMadre = p.cuentas_madre;
 
-        // Determinar color y estilo según estado
         let estadoClase = '';
         let estadoTexto = '';
         let estadoBadge = '';
@@ -230,34 +221,50 @@ if (inputFechaVenta && !inputFechaVenta.value) {
 }
 
 // ============================================
-// FORMULARIO DE REGISTRO DE VENTAS
+// FORMULARIO CON PROTECCIÓN ANTI-DOBLE CLIC
 // ============================================
 const formPerfil = document.getElementById('perfilForm');
 if (formPerfil) {
     formPerfil.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // 🔒 OBTENER EL BOTÓN
+        const btnSubmit = formPerfil.querySelector('button[type="submit"]');
+        
+        // 🔒 VERIFICAR SI YA ESTÁ PROCESANDO
+        if (btnSubmit.disabled) {
+            console.warn('⚠️ Ya hay una venta en proceso, ignorando clic...');
+            return;
+        }
+        
         console.log('📝 Procesando nueva venta...');
         
-        const nombreCliente = document.getElementById('nombre_cliente').value.trim();
-        const whatsapp = document.getElementById('whatsapp').value.trim();
-        const cuentaMadreId = document.getElementById('cuenta_madre_id').value;
-        const perfilAsignado = document.getElementById('perfil_asignado').value.trim();
-        const fechaVenta = document.getElementById('fecha_venta').value;
-        const fechaVencimiento = document.getElementById('vencimiento_cliente').value;
-        const montoVenta = parseFloat(document.getElementById('monto').value);
-
-        // Validaciones
-        if (!nombreCliente || !cuentaMadreId || !perfilAsignado || !fechaVenta || !fechaVencimiento || !montoVenta) {
-            alert('⚠️ Por favor completa todos los campos obligatorios');
-            return;
-        }
-
-        if (montoVenta <= 0) {
-            alert('⚠️ El monto debe ser mayor a 0');
-            return;
-        }
-
+        // 🔒 BLOQUEAR BOTÓN INMEDIATAMENTE
+        btnSubmit.disabled = true;
+        const textoOriginal = btnSubmit.textContent;
+        btnSubmit.textContent = '⏳ GUARDANDO...';
+        btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+        
         try {
+            const nombreCliente = document.getElementById('nombre_cliente').value.trim();
+            const whatsapp = document.getElementById('whatsapp').value.trim();
+            const cuentaMadreId = document.getElementById('cuenta_madre_id').value;
+            const perfilAsignado = document.getElementById('perfil_asignado').value.trim();
+            const fechaVenta = document.getElementById('fecha_venta').value;
+            const fechaVencimiento = document.getElementById('vencimiento_cliente').value;
+            const montoVenta = parseFloat(document.getElementById('monto').value);
+
+            // Validaciones
+            if (!nombreCliente || !cuentaMadreId || !perfilAsignado || !fechaVenta || !fechaVencimiento || !montoVenta) {
+                alert('⚠️ Por favor completa todos los campos obligatorios');
+                return;
+            }
+
+            if (montoVenta <= 0) {
+                alert('⚠️ El monto debe ser mayor a 0');
+                return;
+            }
+
             // 1. Registrar el cliente
             const { data: nuevoCliente, error: errorCliente } = await _supabase
                 .from('perfiles_clientes')
@@ -286,7 +293,7 @@ if (formPerfil) {
                     tipo: 'ingreso',
                     monto: montoVenta,
                     descripcion: `Venta de perfil: ${nombreCliente}`,
-                    fecha: fechaVenta // Usar la fecha de venta que ingresó el usuario
+                    fecha: fechaVenta
                 }]);
 
             if (errorCaja) {
@@ -294,10 +301,10 @@ if (formPerfil) {
             }
 
             // 3. Limpiar formulario y actualizar
-            e.target.reset();
+            formPerfil.reset();
             alert(`✅ ¡Venta registrada con éxito!\n\nCliente: ${nombreCliente}\nMonto: $${montoVenta.toFixed(2)}`);
             
-            // Actualizar toda la interfaz
+            // Actualizar interfaz
             if (typeof renderizarTodo === 'function') {
                 await renderizarTodo();
             }
@@ -307,320 +314,16 @@ if (formPerfil) {
         } catch (err) {
             console.error('❌ Error inesperado:', err);
             alert('❌ Ocurrió un error inesperado. Revisa la consola.');
+        } finally {
+            // 🔒 DESBLOQUEAR BOTÓN DESPUÉS DE 2 SEGUNDOS
+            setTimeout(() => {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = textoOriginal;
+                btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+                console.log('✅ Botón desbloqueado');
+            }, 2000);
         }
     });
 }
 
-// ============================================
-// FUNCIONES GLOBALES (ACCIONES DE CLIENTE)
-// ============================================
-
-// Enviar recordatorio por WhatsApp
-window.enviarRecordatorio = (nombre, whatsapp, plataforma, diasRestantes) => {
-    console.log(`📲 Enviando recordatorio a ${nombre}...`);
-    
-    if (!whatsapp || whatsapp === 'undefined' || whatsapp === 'null') {
-        alert("⚠️ Este cliente no tiene número de WhatsApp registrado");
-        return;
-    }
-
-    // Limpiar número (solo dígitos)
-    const numeroLimpio = whatsapp.replace(/\D/g, '');
-    
-    // Crear mensaje personalizado según estado
-    let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
-    
-    if (diasRestantes < 0) {
-        mensaje += `Te recordamos que tu servicio de *${plataforma}* *ya venció* hace ${Math.abs(diasRestantes)} día${Math.abs(diasRestantes) > 1 ? 's' : ''}. 😔\n\n`;
-        mensaje += `¿Deseas renovarlo para seguir disfrutando de tu mismo perfil? 🎬\n\n`;
-    } else if (diasRestantes === 0) {
-        mensaje += `Te recordamos que tu servicio de *${plataforma}* *vence HOY*. ⚠️\n\n`;
-        mensaje += `Renueva ahora para no perder tu perfil 🎬\n\n`;
-    } else if (diasRestantes <= 3) {
-        mensaje += `Tu servicio de *${plataforma}* vence en *${diasRestantes} día${diasRestantes > 1 ? 's' : ''}* ⏰\n\n`;
-        mensaje += `Renueva ahora para no perder tu perfil y seguir disfrutando sin interrupciones 🎬\n\n`;
-    } else {
-        mensaje += `Te recordamos que tu servicio de *${plataforma}* vence en *${diasRestantes} días* 📅\n\n`;
-        mensaje += `¿Deseas renovar con anticipación? Así aseguras tu mismo perfil 🎬\n\n`;
-    }
-    
-    mensaje += `${CONFIG_NEGOCIO.despedida}`;
-
-    // Abrir WhatsApp
-    const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
-    
-    console.log('✅ WhatsApp abierto');
-};
-
-// Enviar datos de acceso a la cuenta
-window.enviarDatosCuenta = (nombre, whatsapp, plataforma, email, password, perfil) => {
-    console.log(`🔑 Enviando datos de cuenta a ${nombre}...`);
-    
-    if (!whatsapp || whatsapp === 'undefined' || whatsapp === 'null') {
-        alert("⚠️ Este cliente no tiene número de WhatsApp registrado");
-        return;
-    }
-
-    if (!email || !password) {
-        alert("⚠️ Esta cuenta no tiene datos de acceso completos");
-        return;
-    }
-
-    // Limpiar número (solo dígitos)
-    const numeroLimpio = whatsapp.replace(/\D/g, '');
-    
-    // Crear mensaje con los datos de acceso
-    let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
-    mensaje += `Aquí están los datos de acceso a tu cuenta de *${plataforma}* 🔐\n\n`;
-    mensaje += `━━━━━━━━━━━━━━━\n`;
-    mensaje += `📧 *Email:* ${email}\n`;
-    mensaje += `🔒 *Contraseña:* ${password}\n`;
-    mensaje += `👤 *Tu Perfil:* ${perfil}\n`;
-    mensaje += `━━━━━━━━━━━━━━━\n\n`;
-    mensaje += `⚠️ *IMPORTANTE:*\n`;
-    mensaje += `• No compartas estos datos con nadie\n`;
-    mensaje += `• No cambies la contraseña\n`;
-    mensaje += `• Usa solo tu perfil asignado\n\n`;
-    mensaje += `¿Necesitas ayuda para entrar? Escríbenos 😊\n\n`;
-    mensaje += `${CONFIG_NEGOCIO.despedida}`;
-
-    // Abrir WhatsApp
-    const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
-    
-    console.log('✅ Datos de cuenta enviados por WhatsApp');
-};
-
-// Renovar cliente (extender vencimiento)
-window.renovarCliente = async (id, nombre) => {
-    console.log(`🔄 Iniciando renovación de ${nombre}...`);
-    
-    const dias = prompt(`¿Por cuántos días deseas renovar a ${nombre}?`, '30');
-    if (!dias || isNaN(dias) || parseInt(dias) <= 0) {
-        console.log('❌ Renovación cancelada');
-        return;
-    }
-
-    const monto = prompt(`¿Cuánto pagó ${nombre} por la renovación?`, '');
-    if (!monto || isNaN(monto) || parseFloat(monto) <= 0) {
-        console.log('❌ Renovación cancelada - monto inválido');
-        return;
-    }
-
-    try {
-        // Obtener datos actuales del cliente
-        const { data: cliente, error: errorConsulta } = await _supabase
-            .from('perfiles_clientes')
-            .select('fecha_vencimiento')
-            .eq('id', id)
-            .single();
-
-        if (errorConsulta) {
-            alert('❌ Error al consultar cliente');
-            return;
-        }
-
-        // Calcular nueva fecha desde la fecha actual de vencimiento
-        const [año, mes, dia] = cliente.fecha_vencimiento.split('-').map(Number);
-        const fechaActual = new Date(año, mes - 1, dia);
-        const nuevaFecha = new Date(fechaActual);
-        nuevaFecha.setDate(nuevaFecha.getDate() + parseInt(dias));
-        
-        const nuevaFechaStr = `${nuevaFecha.getFullYear()}-${String(nuevaFecha.getMonth() + 1).padStart(2, '0')}-${String(nuevaFecha.getDate()).padStart(2, '0')}`;
-
-        // Actualizar cliente
-        const { error: errorUpdate } = await _supabase
-            .from('perfiles_clientes')
-            .update({ 
-                fecha_vencimiento: nuevaFechaStr,
-                precio_venta: parseFloat(monto)
-            })
-            .eq('id', id);
-
-        if (errorUpdate) {
-            alert('❌ Error al renovar cliente');
-            return;
-        }
-
-        // Registrar ingreso en caja con fecha de HOY
-        const hoy = new Date();
-        const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-        
-        await _supabase.from('flujo_caja').insert([{
-            tipo: 'ingreso',
-            monto: parseFloat(monto),
-            descripcion: `Renovación: ${nombre}`,
-            fecha: fechaHoy
-        }]);
-
-        alert(`✅ Cliente renovado exitosamente\n\nNueva fecha: ${nuevaFecha.toLocaleDateString('es-PE')}\nMonto: $${parseFloat(monto).toFixed(2)}`);
-        
-        if (typeof renderizarTodo === 'function') {
-            await renderizarTodo();
-        }
-
-        console.log('✅ Renovación completada');
-
-    } catch (err) {
-        console.error('❌ Error en renovación:', err);
-        alert('❌ Error al renovar cliente');
-    }
-};
-
-// Abrir modal para migrar cliente a otra cuenta
-window.abrirMigrar = (id) => {
-    console.log(`⇄ Abriendo migración para cliente ${id}`);
-    document.getElementById('migrar_perfil_id').value = id;
-    document.getElementById('modalMigrar').classList.remove('hidden');
-};
-
-// ============================================
-// FUNCIONES DE EDICIÓN DE CLIENTE
-// ============================================
-
-// Abrir modal de edición
-window.abrirEdicion = async (id) => {
-    console.log(`✏️ Abriendo edición para cliente ${id}`);
-    
-    try {
-        // Obtener datos actuales del cliente
-        const { data: cliente, error } = await _supabase
-            .from('perfiles_clientes')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-        if (error) {
-            console.error('❌ Error al consultar cliente:', error);
-            alert('❌ Error al cargar los datos del cliente');
-            return;
-        }
-
-        console.log('📋 Datos del cliente:', cliente);
-
-        // Rellenar el formulario
-        document.getElementById('editar_cliente_id').value = cliente.id;
-        document.getElementById('editar_nombre').value = cliente.nombre_cliente || '';
-        document.getElementById('editar_whatsapp').value = cliente.whatsapp || '';
-        document.getElementById('editar_perfil').value = cliente.perfil_asignado || '';
-        document.getElementById('editar_precio').value = cliente.precio_venta || '';
-        document.getElementById('editar_vencimiento').value = cliente.fecha_vencimiento || '';
-
-        // Mostrar modal
-        document.getElementById('modalEditar').classList.remove('hidden');
-
-    } catch (err) {
-        console.error('❌ Error inesperado:', err);
-        alert('❌ Error al abrir el editor');
-    }
-};
-
-// Cerrar modal de edición
-window.cerrarModalEditar = () => {
-    console.log('🔒 Cerrando modal de edición');
-    document.getElementById('modalEditar').classList.add('hidden');
-};
-
-// Guardar edición
-window.guardarEdicion = async () => {
-    console.log('💾 Guardando edición...');
-    
-    const id = document.getElementById('editar_cliente_id').value;
-    const nombre = document.getElementById('editar_nombre').value.trim();
-    const whatsapp = document.getElementById('editar_whatsapp').value.trim();
-    const perfil = document.getElementById('editar_perfil').value.trim();
-    const precio = parseFloat(document.getElementById('editar_precio').value);
-    const vencimiento = document.getElementById('editar_vencimiento').value;
-
-    // Validaciones
-    if (!nombre || !perfil || !precio || !vencimiento) {
-        alert('⚠️ Por favor completa todos los campos obligatorios');
-        return;
-    }
-
-    if (precio <= 0) {
-        alert('⚠️ El precio debe ser mayor a 0');
-        return;
-    }
-
-    try {
-        // Actualizar cliente
-        const { error } = await _supabase
-            .from('perfiles_clientes')
-            .update({
-                nombre_cliente: nombre,
-                whatsapp: whatsapp || null,
-                perfil_asignado: perfil,
-                precio_venta: precio,
-                fecha_vencimiento: vencimiento
-            })
-            .eq('id', id);
-
-        if (error) {
-            console.error('❌ Error al actualizar:', error);
-            alert(`❌ Error al guardar cambios: ${error.message}`);
-            return;
-        }
-
-        console.log('✅ Cliente actualizado');
-        
-        // Cerrar modal
-        window.cerrarModalEditar();
-        
-        // Actualizar interfaz
-        alert(`✅ Cliente "${nombre}" actualizado correctamente`);
-        
-        if (typeof renderizarTodo === 'function') {
-            await renderizarTodo();
-        } else if (typeof renderizarClientes === 'function') {
-            await renderizarClientes();
-        }
-
-    } catch (err) {
-        console.error('❌ Error inesperado:', err);
-        alert('❌ Error al guardar cambios');
-    }
-};
-
-// Borrar cliente
-window.borrarCliente = async (id, nombre) => {
-    console.log(`🗑️ Intentando eliminar a ${nombre}...`);
-    
-    const confirmacion = confirm(
-        `⚠️ ¿Estás seguro de eliminar a "${nombre}"?\n\n` +
-        `Esta acción no se puede deshacer.\n` +
-        `Se eliminará toda la información del cliente.`
-    );
-    
-    if (!confirmacion) {
-        console.log('❌ Eliminación cancelada');
-        return;
-    }
-
-    try {
-        const { error } = await _supabase
-            .from('perfiles_clientes')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('❌ Error al eliminar:', error);
-            alert('❌ Error al eliminar cliente');
-            return;
-        }
-
-        console.log('✅ Cliente eliminado');
-        alert(`✅ Cliente "${nombre}" eliminado correctamente`);
-        
-        if (typeof renderizarTodo === 'function') {
-            await renderizarTodo();
-        }
-
-    } catch (err) {
-        console.error('❌ Error inesperado:', err);
-        alert('❌ Error al eliminar cliente');
-    }
-};
-
-console.log('✅ Módulo clientes.js inicializado correctamente');
+console.log('✅ Módulo clientes.js PARTE 1 inicializado');
