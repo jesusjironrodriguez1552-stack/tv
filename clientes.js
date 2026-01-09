@@ -1,58 +1,5 @@
-// clientes.js - PARTE 1: GESTIÓN PRINCIPAL DE CLIENTES
-// Módulo mejorado con protección contra doble clic
-
-console.log('👥 Módulo clientes.js cargado');
-
 // ============================================
-// CONFIGURACIÓN DEL NEGOCIO
-// ============================================
-const CONFIG_NEGOCIO = {
-    nombre: "Streaming Store",
-    saludo: "Hola! Somos Streaming Store",
-    despedida: "Gracias por confiar en nosotros 🎬"
-};
-
-// ============================================
-// FUNCIÓN FALLBACK DE FECHA
-// ============================================
-function obtenerFechaLocalFallback() {
-    const ahora = new Date();
-    const año = ahora.getFullYear();
-    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-    const dia = String(ahora.getDate()).padStart(2, '0');
-    const fechaLocal = `${año}-${mes}-${dia}`;
-    console.log('⚠️ Usando fecha fallback:', fechaLocal);
-    return fechaLocal;
-}
-
-// ============================================
-// FUNCIÓN MEJORADA PARA CALCULAR DÍAS RESTANTES
-// ============================================
-function calcularDiasRestantes(fechaVencimiento) {
-    const ahora = new Date();
-    const añoLocal = ahora.getFullYear();
-    const mesLocal = ahora.getMonth();
-    const diaLocal = ahora.getDate();
-    
-    const hoy = new Date(añoLocal, mesLocal, diaLocal);
-    
-    const [año, mes, dia] = fechaVencimiento.split('-').map(Number);
-    const vence = new Date(año, mes - 1, dia);
-    
-    const diferenciaMilisegundos = vence - hoy;
-    const diasRestantes = Math.ceil(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
-    
-    console.log(`📅 Cálculo de días:`, {
-        hoy: hoy.toLocaleDateString('es-PE'),
-        vence: vence.toLocaleDateString('es-PE'),
-        diasRestantes: diasRestantes
-    });
-    
-    return diasRestantes;
-}
-
-// ============================================
-// FUNCIÓN PRINCIPAL DE RENDERIZADO
+// FUNCIÓN PRINCIPAL DE RENDERIZADO CON AGRUPACIÓN DE COMBOS
 // ============================================
 async function renderizarClientes() {
     console.log('🔄 Renderizando clientes...');
@@ -95,11 +42,147 @@ async function renderizarClientes() {
         return;
     }
 
-    console.log(`✅ ${perfiles.length} clientes cargados`);
+    console.log(`✅ ${perfiles.length} perfiles cargados`);
 
-    tabla.innerHTML = '';
+    // ============================================
+    // 🎯 AGRUPAR COMBOS POR COMBO_ID
+    // ============================================
+    const grupos = {};
+    const individuales = [];
 
     perfiles.forEach(p => {
+        if (p.combo_id) {
+            // Es parte de un combo
+            if (!grupos[p.combo_id]) {
+                grupos[p.combo_id] = [];
+            }
+            grupos[p.combo_id].push(p);
+        } else {
+            // Es venta individual
+            individuales.push(p);
+        }
+    });
+
+    console.log(`📦 ${Object.keys(grupos).length} combos detectados`);
+    console.log(`👤 ${individuales.length} ventas individuales`);
+
+    // ============================================
+    // RENDERIZAR
+    // ============================================
+    tabla.innerHTML = '';
+
+    // 1. Renderizar COMBOS (agrupados)
+    Object.entries(grupos).forEach(([comboId, perfilesCombo]) => {
+        const primerPerfil = perfilesCombo[0];
+        const diasRestantes = calcularDiasRestantes(primerPerfil.fecha_vencimiento);
+        const estaVencido = diasRestantes < 0;
+        const porVencer = diasRestantes >= 0 && diasRestantes <= 7;
+
+        let estadoClase = '';
+        let estadoTexto = '';
+        let estadoBadge = '';
+        
+        if (estaVencido) {
+            estadoClase = 'bg-red-900/10 border-l-4 border-red-500';
+            estadoTexto = 'text-red-400';
+            estadoBadge = 'bg-red-600 text-white animate-pulse';
+            estadoTexto = '⚠️ VENCIDO';
+        } else if (diasRestantes === 0) {
+            estadoClase = 'bg-red-900/10 border-l-4 border-red-500';
+            estadoTexto = 'text-red-400';
+            estadoBadge = 'bg-red-600 text-white animate-pulse';
+            estadoTexto = '⚠️ VENCE HOY';
+        } else if (porVencer) {
+            estadoClase = 'bg-yellow-900/10 border-l-4 border-yellow-500';
+            estadoTexto = 'text-yellow-400';
+            estadoBadge = 'bg-yellow-600 text-black';
+            estadoTexto = `⏰ ${diasRestantes} día${diasRestantes > 1 ? 's' : ''}`;
+        } else {
+            estadoClase = '';
+            estadoTexto = 'text-green-400';
+            estadoBadge = 'bg-gray-900 text-green-400 border border-green-900/50';
+            estadoTexto = `✅ ${diasRestantes} días`;
+        }
+
+        // Lista de plataformas del combo
+        const plataformasHTML = perfilesCombo.map(p => {
+            const cuenta = p.cuentas_madre;
+            return `
+                <div class="flex items-center gap-2 py-1">
+                    <span class="text-blue-400 font-bold text-[10px]">${cuenta?.plataforma || '?'}</span>
+                    <span class="text-gray-500 text-[9px]">•</span>
+                    <span class="text-gray-400 text-[9px]">${p.perfil_asignado || 'Sin perfil'}</span>
+                </div>
+            `;
+        }).join('');
+
+        const tr = document.createElement('tr');
+        tr.className = `border-b border-gray-800 transition hover:bg-gray-800/40 ${estadoClase}`;
+        
+        tr.innerHTML = `
+            <td class="p-4">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-black text-[8px] font-black rounded uppercase">
+                        🛒 COMBO
+                    </span>
+                    <p class="font-bold text-white uppercase text-xs">${primerPerfil.nombre_cliente}</p>
+                </div>
+                ${primerPerfil.whatsapp ? 
+                    `<a href="https://wa.me/${primerPerfil.whatsapp.replace(/\D/g, '')}" target="_blank" 
+                        class="text-[10px] text-green-500 font-mono hover:text-green-400 transition block mt-1">
+                        📱 ${primerPerfil.whatsapp}
+                    </a>` 
+                    : '<span class="text-[10px] text-gray-500 block mt-1">Sin WhatsApp</span>'
+                }
+            </td>
+            <td class="p-4 text-[10px]">
+                <div class="space-y-1">
+                    <p class="text-yellow-400 font-bold uppercase text-[10px] mb-2">
+                        ${perfilesCombo.length} plataformas incluidas:
+                    </p>
+                    ${plataformasHTML}
+                </div>
+            </td>
+            <td class="p-4 text-center">
+                <span class="px-3 py-1 rounded-full text-[10px] font-black ${estadoBadge}">
+                    ${new Date(primerPerfil.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-PE')}
+                </span>
+                <p class="text-[8px] mt-1 ${estadoTexto} uppercase font-bold">
+                    ${estadoTexto}
+                </p>
+                ${primerPerfil.precio_venta ? 
+                    `<p class="text-[8px] mt-1 text-gray-600">Pagó: $${parseFloat(primerPerfil.precio_venta).toFixed(2)}</p>` 
+                    : ''
+                }
+            </td>
+            <td class="p-4">
+                <div class="flex justify-end gap-2 flex-wrap">
+                    ${primerPerfil.whatsapp ? 
+                        `<button onclick="enviarRecordatorioCombo('${comboId}')" 
+                            class="p-2 bg-green-600/20 hover:bg-green-600 text-white rounded-lg transition tooltip" 
+                            title="Enviar recordatorio">
+                            📲
+                        </button>` 
+                        : ''
+                    }
+                    <button onclick="renovarCombo('${comboId}')" 
+                        class="p-2 bg-blue-600/20 hover:bg-blue-600 text-white rounded-lg transition tooltip" 
+                        title="Renovar combo completo">
+                        🔄
+                    </button>
+                    <button onclick="borrarCombo('${comboId}')" 
+                        class="p-2 bg-red-600/20 hover:bg-red-600 text-white rounded-lg transition tooltip" 
+                        title="Eliminar combo completo">
+                        🗑️
+                    </button>
+                </div>
+            </td>
+        `;
+        tabla.appendChild(tr);
+    });
+
+    // 2. Renderizar VENTAS INDIVIDUALES
+    individuales.forEach(p => {
         const diasRestantes = calcularDiasRestantes(p.fecha_vencimiento);
         const estaVencido = diasRestantes < 0;
         const porVencer = diasRestantes >= 0 && diasRestantes <= 7;
@@ -210,120 +293,3 @@ async function renderizarClientes() {
 
     console.log('✅ Clientes renderizados correctamente');
 }
-
-// ============================================
-// AUTO-COMPLETAR FECHA DE VENTA CON HOY
-// ============================================
-const inputFechaVenta = document.getElementById('fecha_venta');
-if (inputFechaVenta && !inputFechaVenta.value) {
-    inputFechaVenta.value = new Date().toISOString().split('T')[0];
-    console.log('📅 Campo fecha_venta auto-completado con hoy');
-}
-
-// ============================================
-// FORMULARIO CON PROTECCIÓN ANTI-DOBLE CLIC
-// ============================================
-const formPerfil = document.getElementById('perfilForm');
-if (formPerfil) {
-    formPerfil.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // 🔒 OBTENER EL BOTÓN
-        const btnSubmit = formPerfil.querySelector('button[type="submit"]');
-        
-        // 🔒 VERIFICAR SI YA ESTÁ PROCESANDO
-        if (btnSubmit.disabled) {
-            console.warn('⚠️ Ya hay una venta en proceso, ignorando clic...');
-            return;
-        }
-        
-        console.log('📝 Procesando nueva venta...');
-        
-        // 🔒 BLOQUEAR BOTÓN INMEDIATAMENTE
-        btnSubmit.disabled = true;
-        const textoOriginal = btnSubmit.textContent;
-        btnSubmit.textContent = '⏳ GUARDANDO...';
-        btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
-        
-        try {
-            const nombreCliente = document.getElementById('nombre_cliente').value.trim();
-            const whatsapp = document.getElementById('whatsapp').value.trim();
-            const cuentaMadreId = document.getElementById('cuenta_madre_id').value;
-            const perfilAsignado = document.getElementById('perfil_asignado').value.trim();
-            const fechaVenta = document.getElementById('fecha_venta').value;
-            const fechaVencimiento = document.getElementById('vencimiento_cliente').value;
-            const montoVenta = parseFloat(document.getElementById('monto').value);
-
-            // Validaciones
-            if (!nombreCliente || !cuentaMadreId || !perfilAsignado || !fechaVenta || !fechaVencimiento || !montoVenta) {
-                alert('⚠️ Por favor completa todos los campos obligatorios');
-                return;
-            }
-
-            if (montoVenta <= 0) {
-                alert('⚠️ El monto debe ser mayor a 0');
-                return;
-            }
-
-            // 1. Registrar el cliente
-            const { data: nuevoCliente, error: errorCliente } = await _supabase
-                .from('perfiles_clientes')
-                .insert([{
-                    nombre_cliente: nombreCliente,
-                    whatsapp: whatsapp || null,
-                    cuenta_madre_id: cuentaMadreId,
-                    perfil_asignado: perfilAsignado,
-                    fecha_vencimiento: fechaVencimiento,
-                    precio_venta: montoVenta
-                }])
-                .select();
-
-            if (errorCliente) {
-                console.error('❌ Error al guardar cliente:', errorCliente);
-                alert(`❌ Error al guardar cliente: ${errorCliente.message}`);
-                return;
-            }
-
-            console.log('✅ Cliente registrado:', nuevoCliente);
-
-            // 2. Registrar el ingreso en flujo de caja
-            const { error: errorCaja } = await _supabase
-                .from('flujo_caja')
-                .insert([{
-                    tipo: 'ingreso',
-                    monto: montoVenta,
-                    descripcion: `Venta de perfil: ${nombreCliente}`,
-                    fecha: fechaVenta
-                }]);
-
-            if (errorCaja) {
-                console.warn('⚠️ Cliente guardado pero error en caja:', errorCaja);
-            }
-
-            // 3. Limpiar formulario y actualizar
-            formPerfil.reset();
-            alert(`✅ ¡Venta registrada con éxito!\n\nCliente: ${nombreCliente}\nMonto: $${montoVenta.toFixed(2)}`);
-            
-            // Actualizar interfaz
-            if (typeof renderizarTodo === 'function') {
-                await renderizarTodo();
-            }
-
-            console.log('✅ Venta completada exitosamente');
-
-        } catch (err) {
-            console.error('❌ Error inesperado:', err);
-            alert('❌ Ocurrió un error inesperado. Revisa la consola.');
-        } finally {
-            // 🔒 DESBLOQUEAR BOTÓN DESPUÉS DE 2 SEGUNDOS
-            setTimeout(() => {
-                btnSubmit.disabled = false;
-                btnSubmit.textContent = textoOriginal;
-                btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
-                console.log('✅ Botón desbloqueado');
-            }, 2000);
-        }
-    });
-}
-
-console.log('✅ Módulo clientes.js PARTE 1 inicializado');
