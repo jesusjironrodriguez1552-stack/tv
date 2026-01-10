@@ -1,21 +1,42 @@
-// clientes-acciones.js - PARTE 2: ACCIONES Y MODALES DE CLIENTES
+// ============================================
+// CLIENTES-ACCIONES.JS - VERSIÓN CORREGIDA
 // Funciones de WhatsApp, edición, renovación y eliminación
+// ============================================
 
 console.log('⚙️ Módulo clientes-acciones.js cargado');
+
+// ============================================
+// VERIFICAR CONFIG_NEGOCIO
+// ============================================
+if (typeof CONFIG_NEGOCIO === 'undefined') {
+    console.warn('⚠️ CONFIG_NEGOCIO no está definido, creando valores por defecto');
+    window.CONFIG_NEGOCIO = {
+        saludo: 'Hola',
+        despedida: 'Gracias por tu preferencia'
+    };
+}
 
 // ============================================
 // ENVIAR RECORDATORIO POR WHATSAPP
 // ============================================
 window.enviarRecordatorio = (nombre, whatsapp, plataforma, diasRestantes) => {
     console.log(`📲 Enviando recordatorio a ${nombre}...`);
+    console.log('Datos recibidos:', { nombre, whatsapp, plataforma, diasRestantes });
     
     if (!whatsapp || whatsapp === 'undefined' || whatsapp === 'null') {
         alert("⚠️ Este cliente no tiene número de WhatsApp registrado");
         return;
     }
 
+    // Limpiar número (quitar espacios, guiones, paréntesis, etc.)
     const numeroLimpio = whatsapp.replace(/\D/g, '');
+    console.log('Número limpio:', numeroLimpio);
     
+    if (numeroLimpio.length < 9) {
+        alert("⚠️ El número de WhatsApp parece incorrecto");
+        return;
+    }
+
     let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
     
     if (diasRestantes < 0) {
@@ -35,8 +56,9 @@ window.enviarRecordatorio = (nombre, whatsapp, plataforma, diasRestantes) => {
     mensaje += `${CONFIG_NEGOCIO.despedida}`;
 
     const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
+    console.log('URL generada:', url);
     
+    window.open(url, '_blank');
     console.log('✅ WhatsApp abierto');
 };
 
@@ -45,6 +67,7 @@ window.enviarRecordatorio = (nombre, whatsapp, plataforma, diasRestantes) => {
 // ============================================
 window.enviarDatosCuenta = (nombre, whatsapp, plataforma, email, password, perfil) => {
     console.log(`🔑 Enviando datos de cuenta a ${nombre}...`);
+    console.log('Datos recibidos:', { nombre, whatsapp, plataforma, email, password, perfil });
     
     if (!whatsapp || whatsapp === 'undefined' || whatsapp === 'null') {
         alert("⚠️ Este cliente no tiene número de WhatsApp registrado");
@@ -57,6 +80,12 @@ window.enviarDatosCuenta = (nombre, whatsapp, plataforma, email, password, perfi
     }
 
     const numeroLimpio = whatsapp.replace(/\D/g, '');
+    console.log('Número limpio:', numeroLimpio);
+    
+    if (numeroLimpio.length < 9) {
+        alert("⚠️ El número de WhatsApp parece incorrecto");
+        return;
+    }
     
     let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
     mensaje += `Aquí están los datos de acceso a tu cuenta de *${plataforma}* 🔐\n\n`;
@@ -73,8 +102,9 @@ window.enviarDatosCuenta = (nombre, whatsapp, plataforma, email, password, perfi
     mensaje += `${CONFIG_NEGOCIO.despedida}`;
 
     const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
+    console.log('URL generada:', url);
     
+    window.open(url, '_blank');
     console.log('✅ Datos de cuenta enviados por WhatsApp');
 };
 
@@ -300,8 +330,6 @@ window.borrarCliente = async (id, nombre) => {
     }
 };
 
-console.log('✅ Módulo clientes-acciones.js inicializado');
-
 // ============================================
 // FUNCIONES ESPECIALES PARA COMBOS
 // ============================================
@@ -310,7 +338,6 @@ console.log('✅ Módulo clientes-acciones.js inicializado');
 window.renovarCombo = async (comboId) => {
     console.log(`🔄 Renovando combo ${comboId}...`);
     
-    // Obtener todos los perfiles del combo
     const { data: perfiles, error } = await _supabase
         .from('perfiles_clientes')
         .select('*')
@@ -341,7 +368,6 @@ window.renovarCombo = async (comboId) => {
     }
 
     try {
-        // Calcular nueva fecha
         const [año, mes, dia] = perfiles[0].fecha_vencimiento.split('-').map(Number);
         const fechaActual = new Date(año, mes - 1, dia);
         const nuevaFecha = new Date(fechaActual);
@@ -349,7 +375,6 @@ window.renovarCombo = async (comboId) => {
         
         const nuevaFechaStr = `${nuevaFecha.getFullYear()}-${String(nuevaFecha.getMonth() + 1).padStart(2, '0')}-${String(nuevaFecha.getDate()).padStart(2, '0')}`;
 
-        // Actualizar TODOS los perfiles del combo
         const { error: errorUpdate } = await _supabase
             .from('perfiles_clientes')
             .update({ 
@@ -363,7 +388,6 @@ window.renovarCombo = async (comboId) => {
             return;
         }
 
-        // Registrar ingreso en caja
         const hoy = new Date();
         const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
         
@@ -396,10 +420,9 @@ window.renovarCombo = async (comboId) => {
 window.borrarCombo = async (comboId) => {
     console.log(`🗑️ Eliminando combo ${comboId}...`);
     
-    // Obtener información del combo
     const { data: perfiles } = await _supabase
         .from('perfiles_clientes')
-        .select('*')
+        .select('*, cuentas_madre(plataforma)')
         .eq('combo_id', comboId);
     
     if (!perfiles || perfiles.length === 0) {
@@ -448,27 +471,40 @@ window.borrarCombo = async (comboId) => {
 window.enviarRecordatorioCombo = async (comboId) => {
     console.log(`📲 Enviando recordatorio de combo ${comboId}...`);
     
-    const { data: perfiles } = await _supabase
+    const { data: perfiles, error } = await _supabase
         .from('perfiles_clientes')
         .select('*, cuentas_madre(*)')
         .eq('combo_id', comboId);
     
-    if (!perfiles || perfiles.length === 0) {
+    if (error || !perfiles || perfiles.length === 0) {
         alert('❌ No se encontró el combo');
+        console.error('Error:', error);
         return;
     }
     
     const primerPerfil = perfiles[0];
     const whatsapp = primerPerfil.whatsapp;
     
-    if (!whatsapp) {
+    console.log('Datos del combo:', {
+        cliente: primerPerfil.nombre_cliente,
+        whatsapp: whatsapp,
+        plataformas: perfiles.length
+    });
+    
+    if (!whatsapp || whatsapp === 'undefined' || whatsapp === 'null') {
         alert("⚠️ Este cliente no tiene WhatsApp registrado");
         return;
     }
 
     const diasRestantes = calcularDiasRestantes(primerPerfil.fecha_vencimiento);
     const numeroLimpio = whatsapp.replace(/\D/g, '');
-    const plataformas = perfiles.map(p => p.cuentas_madre?.plataforma).join(', ');
+    
+    if (numeroLimpio.length < 9) {
+        alert("⚠️ El número de WhatsApp parece incorrecto");
+        return;
+    }
+    
+    const plataformas = perfiles.map(p => p.cuentas_madre?.plataforma).filter(Boolean).join(', ');
     
     let mensaje = `${CONFIG_NEGOCIO.saludo}! 👋\n\n`;
     
@@ -485,7 +521,25 @@ window.enviarRecordatorioCombo = async (comboId) => {
     mensaje += `¿Deseas renovar? Contáctanos 🎬\n\n${CONFIG_NEGOCIO.despedida}`;
 
     const url = `https://wa.me/${numeroLimpio}?text=${encodeURIComponent(mensaje)}`;
+    console.log('URL generada:', url);
+    
     window.open(url, '_blank');
+    console.log('✅ Recordatorio de combo enviado');
 };
 
-console.log('✅ Funciones de combos agregadas');
+// ============================================
+// FUNCIÓN AUXILIAR
+// ============================================
+function calcularDiasRestantes(fechaVencimiento) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    
+    const [año, mes, dia] = fechaVencimiento.split('-').map(Number);
+    const vencimiento = new Date(año, mes - 1, dia);
+    vencimiento.setHours(0, 0, 0, 0);
+    
+    const diferencia = Math.ceil((vencimiento - hoy) / (1000 * 60 * 60 * 24));
+    return diferencia;
+}
+
+console.log('✅ Módulo clientes-acciones.js inicializado correctamente');
