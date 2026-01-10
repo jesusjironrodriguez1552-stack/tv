@@ -1,4 +1,5 @@
 // madres.js - GESTIÓN ESPECIALIZADA DE CUENTAS MADRE (INVENTARIO)
+// VERSIÓN CORREGIDA - Protección contra eliminación accidental de perfiles
 
 console.log('🖥️ Módulo madres.js cargado');
 
@@ -161,7 +162,7 @@ async function renderizarMadres() {
                     </div>
                 `}
 
-                <button onclick="eliminarMadre('${m.id}', '${m.plataforma}')" class="w-full py-2 bg-red-900/10 hover:bg-red-600 border border-red-500/20 text-red-500 hover:text-white text-[10px] font-black uppercase rounded-xl transition-all duration-300">
+                <button onclick="eliminarMadre('${m.id}', '${m.plataforma}', ${ocupados})" class="w-full py-2 bg-red-900/10 hover:bg-red-600 border border-red-500/20 text-red-500 hover:text-white text-[10px] font-black uppercase rounded-xl transition-all duration-300">
                     🗑️ Eliminar Cuenta
                 </button>
             </div>
@@ -209,19 +210,40 @@ window.copiarTexto = (texto, tipo) => {
     });
 };
 
-// Eliminar cuenta madre
-window.eliminarMadre = async (id, nombre) => {
+// ============================================
+// ELIMINAR CUENTA MADRE - VERSIÓN MEJORADA CON PROTECCIÓN
+// ============================================
+window.eliminarMadre = async (id, nombre, cantidadPerfiles) => {
+    console.log(`🗑️ Intentando eliminar cuenta madre: ${nombre} (${id})`);
+    console.log(`📊 Perfiles asignados: ${cantidadPerfiles}`);
+    
+    // VERIFICAR SI TIENE PERFILES ASIGNADOS
+    if (cantidadPerfiles > 0) {
+        // ⚠️ CASO 1: Tiene perfiles - BLOQUEAR eliminación
+        alert(
+            `⚠️ NO SE PUEDE ELIMINAR ESTA CUENTA\n\n` +
+            `La cuenta de ${nombre} tiene ${cantidadPerfiles} cliente${cantidadPerfiles > 1 ? 's' : ''} asignado${cantidadPerfiles > 1 ? 's' : ''}.\n\n` +
+            `DEBES HACER LO SIGUIENTE:\n\n` +
+            `1️⃣ Ve a la sección "👥 Clientes"\n` +
+            `2️⃣ Elimina o migra todos los clientes de esta cuenta\n` +
+            `3️⃣ Luego podrás eliminar la cuenta madre\n\n` +
+            `✨ Esto protege tus ventas y evita pérdida de datos.`
+        );
+        
+        console.log('❌ Eliminación bloqueada: tiene perfiles asignados');
+        return;
+    }
+    
+    // ✅ CASO 2: No tiene perfiles - PERMITIR eliminación
     const confirmacion = confirm(
-        `⚠️ ¿Estás seguro de eliminar la cuenta de ${nombre}?\n\n` +
-        `Esta acción:\n` +
-        `• Eliminará la cuenta madre\n` +
-        `• Los clientes asignados quedarán sin cuenta\n` +
-        `• NO se puede deshacer\n\n` +
-        `¿Continuar?`
+        `¿Eliminar la cuenta de ${nombre}?\n\n` +
+        `Esta cuenta NO tiene clientes asignados.\n\n` +
+        `⚠️ Esta acción NO se puede deshacer.\n\n` +
+        `¿Continuar con la eliminación?`
     );
     
     if (!confirmacion) {
-        console.log('❌ Eliminación cancelada');
+        console.log('❌ Eliminación cancelada por el usuario');
         return;
     }
 
@@ -235,21 +257,23 @@ window.eliminarMadre = async (id, nombre) => {
         
         if (error) {
             console.error('❌ Error al eliminar:', error);
-            alert('❌ Error al eliminar la cuenta');
+            alert(`❌ Error al eliminar la cuenta:\n${error.message}`);
             return;
         }
 
-        console.log('✅ Cuenta eliminada');
+        console.log('✅ Cuenta eliminada exitosamente');
         alert(`✅ Cuenta de ${nombre} eliminada correctamente`);
         
         // Actualizar interfaz
         if (typeof renderizarTodo === 'function') {
             await renderizarTodo();
+        } else if (typeof renderizarMadres === 'function') {
+            await renderizarMadres();
         }
         
     } catch (err) {
         console.error('❌ Error inesperado:', err);
-        alert('❌ Error al eliminar la cuenta');
+        alert(`❌ Error inesperado al eliminar:\n${err.message}`);
     }
 };
 
@@ -267,10 +291,10 @@ if (formMadre) {
         const password = document.getElementById('m_password').value.trim();
         const vencimiento = document.getElementById('m_vencimiento').value;
         const costoInput = document.getElementById('m_costo').value.trim();
-        const costo = costoInput ? parseFloat(costoInput) : 0; // ✅ AHORA ES OPCIONAL
+        const costo = costoInput ? parseFloat(costoInput) : 0;
         const perfilesTotales = parseInt(document.getElementById('m_perfiles_totales').value) || 5;
 
-        // Validaciones básicas (SIN VALIDAR COSTO)
+        // Validaciones básicas
         if (!plataforma || !email || !password || !vencimiento) {
             alert('⚠️ Por favor completa los campos obligatorios:\n- Plataforma\n- Correo\n- Contraseña\n- Fecha de vencimiento');
             return;
@@ -290,7 +314,7 @@ if (formMadre) {
                     email_cuenta: email,
                     password_cuenta: password,
                     fecha_vencimiento: vencimiento,
-                    costo_compra: costo, // ✅ Puede ser 0
+                    costo_compra: costo,
                     perfiles_totales: perfilesTotales
                 }])
                 .select();
