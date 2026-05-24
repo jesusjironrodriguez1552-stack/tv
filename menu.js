@@ -1,5 +1,5 @@
 // ============================================================
-//  menu.js — Lógica del Dashboard
+//  menu.js — Dashboard StreamVault (sin sidebar)
 // ============================================================
 
 import { requireAuth, signOut, supabase } from './supabase.js';
@@ -10,20 +10,19 @@ const userId  = session.user.id;
 
 // ── Fecha de hoy ─────────────────────────────────────────────
 function setFecha() {
-  const now = new Date();
+  const now  = new Date();
   const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
   const str  = now.toLocaleDateString('es-PE', opts);
-  // Capitalizar primera letra
   document.getElementById('fechaHoy').textContent =
     str.charAt(0).toUpperCase() + str.slice(1);
 }
 setFecha();
 
-// ── Datos del admin logueado ──────────────────────────────────
+// ── Datos del admin ───────────────────────────────────────────
 async function loadAdminInfo() {
   const { data, error } = await supabase
     .from('admins')
-    .select('nombre, rol')
+    .select('nombre')
     .eq('id', userId)
     .single();
 
@@ -36,91 +35,63 @@ async function loadAdminInfo() {
 }
 loadAdminInfo();
 
-// ── Estadísticas (placeholders hasta tener tablas de perfiles) ─
-// Cuando crees las tablas reales, reemplaza estas funciones con
-// queries reales a Supabase.
+// ── Estadísticas ──────────────────────────────────────────────
 async function loadStats() {
-  // ── Totales resumen (cards superiores) ──────────────────────
+  const hoy   = new Date();
+  const hoyStr = hoy.toISOString().split('T')[0];
+
+  const en5    = new Date(hoy);
+  en5.setDate(hoy.getDate() + 5);
+  const en5Str = en5.toISOString().split('T')[0];
+
+  // Helper: query segura con fallback a 0
+  async function count(table, filters = []) {
+    let q = supabase.from(table).select('*', { count: 'exact', head: true });
+    for (const [col, op, val] of filters) {
+      if      (op === 'eq')  q = q.eq(col, val);
+      else if (op === 'lt')  q = q.lt(col, val);
+      else if (op === 'gte') q = q.gte(col, val);
+      else if (op === 'lte') q = q.lte(col, val);
+    }
+    const { count: c, error } = await q;
+    return error ? null : (c ?? 0);
+  }
 
   // Cuentas madres
-  try {
-    const { count } = await supabase
-      .from('cuentas_madres')
-      .select('*', { count: 'exact', head: true });
-    document.getElementById('totalCuentas').textContent = count ?? 0;
-  } catch { document.getElementById('totalCuentas').textContent = '—'; }
+  const cuentas = await count('cuentas_madres');
+  document.getElementById('totalCuentas').textContent =
+    cuentas !== null ? cuentas : '—';
 
   // Perfiles totales
-  try {
-    const { count } = await supabase
-      .from('perfiles')
-      .select('*', { count: 'exact', head: true });
-    document.getElementById('totalPerfiles').textContent = count ?? 0;
-  } catch { document.getElementById('totalPerfiles').textContent = '—'; }
+  const perfiles = await count('perfiles');
+  document.getElementById('totalPerfiles').textContent =
+    perfiles !== null ? perfiles : '—';
 
-  // Perfiles libres (sin asignar)
-  try {
-    const { count } = await supabase
-      .from('perfiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('estado', 'libre');
-    const libres = count ?? 0;
-    document.getElementById('totalLibres').textContent  = libres;
-    document.getElementById('statLibres').textContent   = libres;
-  } catch {
-    document.getElementById('totalLibres').textContent = '—';
-    document.getElementById('statLibres').textContent  = '—';
-  }
+  // Perfiles libres
+  const libres = await count('perfiles', [['estado', 'eq', 'libre']]);
+  document.getElementById('totalLibres').textContent  = libres !== null ? libres : '—';
+  document.getElementById('statLibres').textContent   = libres !== null ? libres : '—';
 
-  // Perfiles vencidos
-  try {
-    const hoy = new Date().toISOString().split('T')[0];
-    const { count } = await supabase
-      .from('perfiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('estado', 'activo')
-      .lt('fecha_vencimiento', hoy);
-    const vencidos = count ?? 0;
-    document.getElementById('totalVencidos').textContent = vencidos;
-    document.getElementById('statVencidos').textContent  = vencidos;
-  } catch {
-    document.getElementById('totalVencidos').textContent = '—';
-    document.getElementById('statVencidos').textContent  = '—';
-  }
+  // Vencidos (fecha_vencimiento pasada y estado activo)
+  const vencidos = await count('perfiles', [
+    ['estado', 'eq', 'activo'],
+    ['fecha_vencimiento', 'lt', hoyStr]
+  ]);
+  document.getElementById('totalVencidos').textContent = vencidos !== null ? vencidos : '—';
+  document.getElementById('statVencidos').textContent  = vencidos !== null ? vencidos : '—';
 
-  // Perfiles por vencer (próximos 5 días)
-  try {
-    const hoy    = new Date();
-    const en5    = new Date(hoy); en5.setDate(hoy.getDate() + 5);
-    const hoyStr = hoy.toISOString().split('T')[0];
-    const en5Str = en5.toISOString().split('T')[0];
-    const { count } = await supabase
-      .from('perfiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('estado', 'activo')
-      .gte('fecha_vencimiento', hoyStr)
-      .lte('fecha_vencimiento', en5Str);
-    document.getElementById('statPorVencer').textContent = count ?? 0;
-  } catch {
-    document.getElementById('statPorVencer').textContent = '—';
-  }
+  // Por vencer (próximos 5 días)
+  const porVencer = await count('perfiles', [
+    ['estado', 'eq', 'activo'],
+    ['fecha_vencimiento', 'gte', hoyStr],
+    ['fecha_vencimiento', 'lte', en5Str]
+  ]);
+  document.getElementById('statPorVencer').textContent =
+    porVencer !== null ? porVencer : '—';
 }
 loadStats();
 
-// ── Logout ───────────────────────────────────────────────────
+// ── Logout ────────────────────────────────────────────────────
 document.getElementById('btnLogout').addEventListener('click', async () => {
   await signOut('index.html');
 });
-
-// ── Sidebar mobile toggle ────────────────────────────────────
-const sidebar  = document.getElementById('sidebar');
-const overlay  = document.getElementById('sidebarOverlay');
-const menuBtn  = document.getElementById('menuToggle');
-
-function openSidebar()  { sidebar.classList.add('open');   overlay.classList.add('active'); }
-function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('active'); }
-
-menuBtn.addEventListener('click', () =>
-  sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
-);
-overlay.addEventListener('click', closeSidebar);
