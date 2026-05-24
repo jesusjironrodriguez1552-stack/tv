@@ -21,8 +21,6 @@ let cuentas = [], editandoId = null, eliminandoId = null, plataformaSel = null;
 const $ = id => document.getElementById(id);
 const modalOverlay   = $('modalOverlay');
 const deleteOverlay  = $('deleteOverlay');
-const emptyState     = $('emptyState');
-const tableLoading   = $('tableLoading');
 const tableWrap      = $('tableWrap');
 const tableCuerpo    = $('tableCuerpo');
 const fEmail         = $('fEmail');
@@ -35,17 +33,8 @@ const costoDisplay   = $('costoPorPerfil');
 const btnGuardar     = $('btnGuardar');
 const plataformasGrid = $('plataformasGrid');
 
-function mostrar(el)  { el.hidden = false; }
-function ocultar(el)  { el.hidden = true; }
-
-function setEstado(estado) {
-  ocultar(tableLoading);
-  ocultar(emptyState);
-  ocultar(tableWrap);
-  if (estado === 'loading') mostrar(tableLoading);
-  if (estado === 'empty')   mostrar(emptyState);
-  if (estado === 'data')    mostrar(tableWrap);
-}
+function mostrar(el) { el.hidden = false; }
+function ocultar(el) { el.hidden = true; }
 
 function calcularCosto() {
   const precio = parseFloat(fPrecio.value) || 0;
@@ -147,8 +136,7 @@ window.togglePassTabla = function(btn) {
 };
 
 function renderTabla(data) {
-  if (!data || data.length === 0) { setEstado('empty'); return; }
-  setEstado('data');
+  tableWrap.hidden = false;
   tableCuerpo.innerHTML = '';
 
   data.forEach(c => {
@@ -213,10 +201,10 @@ function actualizarStats(data) {
 }
 
 async function cargarCuentas() {
-  setEstado('loading');
+
   const { data, error } = await supabase
     .from('cuentas_madres').select('*').order('created_at', { ascending: false });
-  if (error) { console.error(error); setEstado('empty'); return; }
+  if (error) { console.error(error); return; }
   cuentas = data || [];
   actualizarStats(cuentas);
   renderTabla(filtrar(cuentas));
