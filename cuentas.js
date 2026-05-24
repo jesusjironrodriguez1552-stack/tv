@@ -17,25 +17,23 @@ const PLATAFORMAS = {
 };
 
 let cuentas = [], editandoId = null, eliminandoId = null, plataformaSel = null;
-
 const $ = id => document.getElementById(id);
-const modalOverlay   = $('modalOverlay');
-const deleteOverlay  = $('deleteOverlay');
-const tableWrap      = $('tableWrap');
-const tableCuerpo    = $('tableCuerpo');
-const fEmail         = $('fEmail');
-const fPassword      = $('fPassword');
-const fPerfiles      = $('fPerfiles');
-const fPrecio        = $('fPrecio');
-const fRenovacion    = $('fRenovacion');
-const fNotas         = $('fNotas');
-const costoDisplay   = $('costoPorPerfil');
-const btnGuardar     = $('btnGuardar');
+
+// DOM
+const modalOverlay    = $('modalOverlay');
+const deleteOverlay   = $('deleteOverlay');
+const tableWrap       = $('tableWrap');
+const tableCuerpo     = $('tableCuerpo');
+const fEmail          = $('fEmail');
+const fPassword       = $('fPassword');
+const fPerfiles       = $('fPerfiles');
+const fPrecio         = $('fPrecio');
+const fRenovacion     = $('fRenovacion');
+const fNotas          = $('fNotas');
+const costoDisplay    = $('costoPorPerfil');
 const plataformasGrid = $('plataformasGrid');
 
-function mostrar(el) { el.hidden = false; }
-function ocultar(el) { el.hidden = true; }
-
+// Costo por perfil
 function calcularCosto() {
   const precio = parseFloat(fPrecio.value) || 0;
   const perfs  = parseInt(fPerfiles.value) || 0;
@@ -44,10 +42,12 @@ function calcularCosto() {
 fPrecio.addEventListener('input', calcularCosto);
 fPerfiles.addEventListener('input', calcularCosto);
 
+// Toggle pass formulario
 $('fTogglePass').addEventListener('click', () => {
   fPassword.type = fPassword.type === 'password' ? 'text' : 'password';
 });
 
+// Seleccion plataforma
 plataformasGrid.querySelectorAll('.plat-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     plataformasGrid.querySelectorAll('.plat-btn').forEach(b => b.classList.remove('selected'));
@@ -56,14 +56,15 @@ plataformasGrid.querySelectorAll('.plat-btn').forEach(btn => {
   });
 });
 
+// Modal nueva/editar
 function abrirModal(cuenta = null) {
   editandoId    = cuenta ? cuenta.id : null;
   plataformaSel = cuenta ? cuenta.plataforma : null;
   $('modalTitle').textContent     = cuenta ? 'Editar Cuenta' : 'Nueva Cuenta Madre';
   $('btnGuardarText').textContent = cuenta ? 'Actualizar'    : 'Guardar Cuenta';
-  plataformasGrid.querySelectorAll('.plat-btn').forEach(b => {
-    b.classList.toggle('selected', cuenta ? b.dataset.plat === cuenta.plataforma : false);
-  });
+  plataformasGrid.querySelectorAll('.plat-btn').forEach(b =>
+    b.classList.toggle('selected', cuenta ? b.dataset.plat === cuenta.plataforma : false)
+  );
   fEmail.value      = cuenta?.email            || '';
   fPassword.value   = cuenta?.password         || '';
   fPerfiles.value   = cuenta?.max_perfiles     || '';
@@ -71,17 +72,18 @@ function abrirModal(cuenta = null) {
   fRenovacion.value = cuenta?.fecha_renovacion || '';
   fNotas.value      = cuenta?.notas            || '';
   calcularCosto();
-  mostrar(modalOverlay);
+  modalOverlay.hidden = false;
 }
 
-function cerrarModal() { ocultar(modalOverlay); }
-$('btnNueva').addEventListener('click', () => abrirModal());
-$('btnEmptyNueva').addEventListener('click', () => abrirModal());
+function cerrarModal() { modalOverlay.hidden = true; }
+
+$('btnNueva').addEventListener('click',   () => abrirModal());
 $('modalClose').addEventListener('click', cerrarModal);
-$('btnCancel').addEventListener('click', cerrarModal);
+$('btnCancel').addEventListener('click',  cerrarModal);
 modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) cerrarModal(); });
 
-btnGuardar.addEventListener('click', async () => {
+// Guardar
+$('btnGuardar').addEventListener('click', async () => {
   if (!plataformaSel) return alert('Selecciona una plataforma.');
   if (!fEmail.value.trim() || !fPassword.value.trim()) return alert('Correo y contrasena son obligatorios.');
   if (!fPerfiles.value || parseInt(fPerfiles.value) < 1) return alert('Cantidad de perfiles invalida.');
@@ -97,47 +99,55 @@ btnGuardar.addEventListener('click', async () => {
     activa:           true,
   };
 
-  btnGuardar.disabled = true;
-  $('btnGuardarText').hidden    = true;
-  $('btnGuardarSpinner').hidden = false;
+  $('btnGuardar').disabled        = true;
+  $('btnGuardarText').hidden      = true;
+  $('btnGuardarSpinner').hidden   = false;
 
   const { error } = editandoId
     ? await supabase.from('cuentas_madres').update(payload).eq('id', editandoId)
     : await supabase.from('cuentas_madres').insert(payload);
 
-  btnGuardar.disabled = false;
-  $('btnGuardarText').hidden    = false;
-  $('btnGuardarSpinner').hidden = true;
+  $('btnGuardar').disabled        = false;
+  $('btnGuardarText').hidden      = false;
+  $('btnGuardarSpinner').hidden   = true;
 
   if (error) return alert('Error: ' + error.message);
   cerrarModal();
   cargarCuentas();
 });
 
-$('deleteClose').addEventListener('click',     () => ocultar(deleteOverlay));
-$('deleteCancelBtn').addEventListener('click', () => ocultar(deleteOverlay));
-deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) ocultar(deleteOverlay); });
-
+// Eliminar
+$('deleteClose').addEventListener('click',     () => { deleteOverlay.hidden = true; });
+$('deleteCancelBtn').addEventListener('click', () => { deleteOverlay.hidden = true; });
+deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) deleteOverlay.hidden = true; });
 $('deleteConfirmBtn').addEventListener('click', async () => {
   if (!eliminandoId) return;
   const { error } = await supabase.from('cuentas_madres').delete().eq('id', eliminandoId);
   if (error) return alert('Error: ' + error.message);
-  ocultar(deleteOverlay);
+  deleteOverlay.hidden = true;
   eliminandoId = null;
   cargarCuentas();
 });
 
+// Toggle pass en tabla
 window.togglePassTabla = function(btn) {
-  const dots = btn.parentElement.querySelector('.pass-dots');
-  const text  = btn.parentElement.querySelector('.pass-text');
-  const vis   = text.style.display === 'inline';
+  const cell = btn.parentElement;
+  const dots = cell.querySelector('.pass-dots');
+  const text = cell.querySelector('.pass-text');
+  const vis  = text.style.display === 'inline';
   dots.style.display = vis ? 'inline' : 'none';
   text.style.display = vis ? 'none'   : 'inline';
 };
 
+// Render tabla
 function renderTabla(data) {
-  tableWrap.hidden = false;
+  tableWrap.hidden      = false;
   tableCuerpo.innerHTML = '';
+
+  if (!data || data.length === 0) {
+    tableCuerpo.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted2)">No hay cuentas registradas.</td></tr>`;
+    return;
+  }
 
   data.forEach(c => {
     const info  = PLATAFORMAS[c.plataforma] || { color: '#555', label: c.plataforma.slice(0,3).toUpperCase() };
@@ -153,8 +163,8 @@ function renderTabla(data) {
       </div></td>
       <td>${c.email}</td>
       <td><div class="pass-cell">
-        <span class="pass-dots">........</span>
-        <span class="pass-text">${c.password}</span>
+        <span class="pass-dots">••••••••</span>
+        <span class="pass-text" style="display:none">${c.password}</span>
         <button class="btn-show-pass" onclick="togglePassTabla(this)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
@@ -184,24 +194,21 @@ function renderTabla(data) {
   tableCuerpo.querySelectorAll('.btn-accion.del').forEach(btn => {
     btn.addEventListener('click', () => {
       eliminandoId = btn.dataset.id;
-      mostrar(deleteOverlay);
+      deleteOverlay.hidden = false;
     });
   });
 }
 
 function actualizarStats(data) {
-  const total   = data.length;
-  const perfs   = data.reduce((s, c) => s + (c.max_perfiles || 0), 0);
-  const inv     = data.reduce((s, c) => s + (parseFloat(c.precio_compra) || 0), 0);
-  const prom    = perfs > 0 ? (inv / perfs).toFixed(2) : '0.00';
-  $('qsTotalCuentas').textContent  = total;
+  const perfs = data.reduce((s, c) => s + (c.max_perfiles || 0), 0);
+  const inv   = data.reduce((s, c) => s + (parseFloat(c.precio_compra) || 0), 0);
+  $('qsTotalCuentas').textContent  = data.length;
   $('qsTotalPerfiles').textContent = perfs;
   $('qsInversion').textContent     = `S/ ${inv.toFixed(2)}`;
-  $('qsCostoPerfil').textContent   = `S/ ${prom}`;
+  $('qsCostoPerfil').textContent   = `S/ ${perfs > 0 ? (inv/perfs).toFixed(2) : '0.00'}`;
 }
 
 async function cargarCuentas() {
-
   const { data, error } = await supabase
     .from('cuentas_madres').select('*').order('created_at', { ascending: false });
   if (error) { console.error(error); return; }
