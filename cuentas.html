@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StreamVault — Cuentas Madres</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="cuentas.css"/>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-glow g1"></div>
+  <div class="bg-glow g2"></div>
+
+  <div class="layout">
+
+    <!-- ── TOPBAR ── -->
+    <header class="topbar">
+      <a href="menu.html" class="topbar-back" title="Volver al menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </a>
+      <div class="topbar-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 40 40" fill="none">
+            <polygon points="8,6 34,20 8,34" fill="currentColor"/>
+            <rect x="28" y="6" width="4" height="28" rx="2" fill="currentColor" opacity="0.45"/>
+          </svg>
+        </div>
+        <span class="brand-text">StreamVault</span>
+      </div>
+      <div class="topbar-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+        <span>Cuentas Madres</span>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-nueva" id="btnNueva">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nueva Cuenta
+        </button>
+        <button class="btn-logout" id="btnLogout" title="Cerrar sesión">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── CONTENIDO ── -->
+    <main class="content">
+
+      <!-- Stats rápidas -->
+      <div class="quick-stats" id="quickStats">
+        <div class="qs-card">
+          <span class="qs-label">Total cuentas</span>
+          <span class="qs-val" id="qsTotalCuentas">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Total perfiles</span>
+          <span class="qs-val" id="qsTotalPerfiles">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Inversión total</span>
+          <span class="qs-val" id="qsInversion">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Costo prom. perfil</span>
+          <span class="qs-val" id="qsCostoPerfil">—</span>
+        </div>
+      </div>
+
+      <!-- Tabla stock -->
+      <div class="stock-panel">
+        <div class="panel-head">
+          <h2 class="panel-title">Stock de cuentas</h2>
+          <div class="panel-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Buscar por plataforma o correo..."/>
+          </div>
+        </div>
+
+        <!-- Estado vacío -->
+        <div class="empty-state" id="emptyState" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <p>No hay cuentas registradas aún.</p>
+          <button class="btn-empty" id="btnEmptyNueva">Agregar primera cuenta</button>
+        </div>
+
+        <!-- Loading -->
+        <div class="table-loading" id="tableLoading">
+          <div class="spinner"></div>
+          <span>Cargando cuentas...</span>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-wrap" id="tableWrap" hidden>
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Plataforma</th>
+                <th>Correo</th>
+                <th>Contraseña</th>
+                <th>Perfiles</th>
+                <th>Precio compra</th>
+                <th>Costo/perfil</th>
+                <th>Renovación</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tableCuerpo"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ── MODAL NUEVA / EDITAR CUENTA ── -->
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <div class="modal" id="modal">
+
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Nueva Cuenta Madre</h2>
+        <button class="modal-close" id="modalClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Selector de plataforma -->
+        <div class="field-group">
+          <label>Plataforma</label>
+          <div class="plataformas-grid" id="plataformasGrid">
+
+            <button type="button" class="plat-btn" data-plat="Netflix">
+              <span class="plat-icon" style="background:#E50914;">N</span>
+              <span class="plat-name">Netflix</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Disney+">
+              <span class="plat-icon" style="background:#113CCF;">
+                <svg viewBox="0 0 32 32" fill="white" style="width:18px;height:18px;">
+                  <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2zm0 2c6.627 0 12 5.373 12 12S22.627 28 16 28 4 22.627 4 16 9.373 4 16 4zm-3 5v14l10-7-10-7z"/>
+                </svg>
+              </span>
+              <span class="plat-name">Disney+</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Disney Estándar">
+              <span class="plat-icon" style="background:#0B3D91;">D</span>
+              <span class="plat-name">Disney Est.</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="HBO Max">
+              <span class="plat-icon" style="background:#5822B4;">HBO</span>
+              <span class="plat-name">HBO Max</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Prime Video">
+              <span class="plat-icon" style="background:#00A8E1;">
+                <svg viewBox="0 0 32 32" fill="white" style="width:18px;height:18px;">
+                  <path d="M16 4L4 22h24L16 4z"/>
+                </svg>
+              </span>
+              <span class="plat-name">Prime Video</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Crunchyroll">
+              <span class="plat-icon" style="background:#F47521;">CR</span>
+              <span class="plat-name">Crunchyroll</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="YouTube Premium">
+              <span class="plat-icon" style="background:#FF0000;">
+                <svg viewBox="0 0 32 32" fill="white" style="width:18px;height:18px;">
+                  <path d="M13 10l9 6-9 6V10z"/>
+                </svg>
+              </span>
+              <span class="plat-name">YouTube Prem.</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="WinTV">
+              <span class="plat-icon" style="background:#1A56DB;">W</span>
+              <span class="plat-name">WinTV</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="DirecTV">
+              <span class="plat-icon" style="background:#0077C8;">DTV</span>
+              <span class="plat-name">DirecTV</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Movistar Play">
+              <span class="plat-icon" style="background:#019DF4;">M</span>
+              <span class="plat-name">Movistar Play</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Claro TV">
+              <span class="plat-icon" style="background:#DA0000;">C</span>
+              <span class="plat-name">Claro TV</span>
+            </button>
+
+            <button type="button" class="plat-btn" data-plat="Rakuten">
+              <span class="plat-icon" style="background:#BF0000;">R</span>
+              <span class="plat-name">Rakuten</span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Formulario datos -->
+        <div class="form-grid">
+          <div class="field-group">
+            <label for="fEmail">Correo de la cuenta</label>
+            <input type="email" id="fEmail" placeholder="ejemplo@correo.com"/>
+          </div>
+          <div class="field-group">
+            <label for="fPassword">Contraseña</label>
+            <div class="input-wrap">
+              <input type="password" id="fPassword" placeholder="••••••••"/>
+              <button type="button" class="toggle-pass" id="fTogglePass">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="fPerfiles">Cantidad de perfiles</label>
+            <input type="number" id="fPerfiles" placeholder="5" min="1" max="20"/>
+          </div>
+          <div class="field-group">
+            <label for="fPrecio">Precio de compra (S/)</label>
+            <div class="input-prefix">
+              <span class="prefix">S/</span>
+              <input type="number" id="fPrecio" placeholder="0.00" min="0" step="0.01"/>
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="fRenovacion">Fecha de renovación</label>
+            <input type="date" id="fRenovacion"/>
+          </div>
+          <div class="field-group">
+            <label>Costo por perfil</label>
+            <div class="costo-perfil-display">
+              <span class="prefix">S/</span>
+              <span id="costoPorPerfil">0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-top:4px;">
+          <label for="fNotas">Notas (opcional)</label>
+          <textarea id="fNotas" placeholder="Observaciones, pantallas disponibles, etc." rows="2"></textarea>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" id="btnCancel">Cancelar</button>
+        <button class="btn-guardar" id="btnGuardar">
+          <span id="btnGuardarText">Guardar Cuenta</span>
+          <span class="btn-spinner" id="btnGuardarSpinner" hidden>
+            <svg class="spinner-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="10" stroke-opacity="0.2"/>
+              <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal confirmar eliminar -->
+  <div class="modal-overlay" id="deleteOverlay" hidden>
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title">¿Eliminar cuenta?</h2>
+        <button class="modal-close" id="deleteClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-msg">Esta acción eliminará la cuenta madre y <strong>todos sus perfiles asociados</strong>. No se puede deshacer.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="deleteCancelBtn">Cancelar</button>
+        <button class="btn-delete" id="deleteConfirmBtn">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="cuentas.js"></script>
+</body>
+</html>
