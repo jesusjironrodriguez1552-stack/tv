@@ -219,13 +219,12 @@ function renderTabla(data) {
   emptyState.hidden   = true;
   tableWrap.hidden    = true;
 
-  if (!data.length) {
+  if (!data || data.length === 0) {
     emptyState.hidden = false;
     return;
   }
 
-  emptyState.hidden = true;
-  tableWrap.hidden  = false;
+  tableWrap.hidden      = false;
   tableCuerpo.innerHTML = '';
 
   data.forEach(c => {
