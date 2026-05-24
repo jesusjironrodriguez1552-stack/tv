@@ -216,10 +216,11 @@ function togglePassTabla(btn) {
 // ── Renderizar tabla ──────────────────────────────────────────
 function renderTabla(data) {
   tableLoading.hidden = true;
+  emptyState.hidden   = true;
+  tableWrap.hidden    = true;
 
   if (!data.length) {
     emptyState.hidden = false;
-    tableWrap.hidden  = true;
     return;
   }
 
