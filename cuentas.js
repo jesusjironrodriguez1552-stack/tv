@@ -323,9 +323,10 @@ async function cargarCuentas() {
     .select('*')
     .order('created_at', { ascending: false });
 
+  tableLoading.hidden = true;
+
   if (error) {
-    tableLoading.hidden = true;
-    emptyState.hidden   = false;
+    emptyState.hidden = false;
     console.error(error);
     return;
   }
