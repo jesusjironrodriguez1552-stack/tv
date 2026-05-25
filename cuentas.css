@@ -166,3 +166,5 @@ textarea { resize: vertical; min-height: 56px; }
 /* Responsive */
 @media (max-width:900px) { .quick-stats{grid-template-columns:repeat(2,1fr);} .plataformas-grid{grid-template-columns:repeat(4,1fr);} }
 @media (max-width:640px) { .content{padding:18px 14px 28px;} .form-grid{grid-template-columns:1fr;} .plataformas-grid{grid-template-columns:repeat(3,1fr);} }
+
+.btn-accion.renov:hover { background: rgba(0,229,195,.1); color: var(--teal); border-color: rgba(0,229,195,.25); }
