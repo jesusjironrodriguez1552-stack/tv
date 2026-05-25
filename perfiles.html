@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StreamVault — Perfiles</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="perfiles.css"/>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="bg-glow g1"></div>
+  <div class="bg-glow g2"></div>
+
+  <div class="layout">
+
+    <!-- TOPBAR -->
+    <header class="topbar">
+      <a href="menu.html" class="topbar-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+      <div class="topbar-brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 40 40" fill="none"><polygon points="8,6 34,20 8,34" fill="currentColor"/><rect x="28" y="6" width="4" height="28" rx="2" fill="currentColor" opacity="0.45"/></svg>
+        </div>
+        <span class="brand-text">StreamVault</span>
+      </div>
+      <div class="topbar-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Perfiles</span>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-nueva" id="btnNuevo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Asignar Perfil
+        </button>
+        <button class="btn-logout" id="btnLogout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENIDO -->
+    <main class="content">
+
+      <!-- Stats -->
+      <div class="quick-stats">
+        <div class="qs-card">
+          <span class="qs-label">Total Perfiles</span>
+          <span class="qs-val" id="statTotal">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Libres</span>
+          <span class="qs-val" id="statLibres" style="color:var(--green)">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Activos</span>
+          <span class="qs-val" id="statActivos" style="color:var(--blue)">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Por vencer</span>
+          <span class="qs-val" id="statPorVencer" style="color:var(--amber)">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Vencidos</span>
+          <span class="qs-val" id="statVencidos" style="color:var(--red)">—</span>
+        </div>
+        <div class="qs-card">
+          <span class="qs-label">Ingresos mes</span>
+          <span class="qs-val" id="statIngresos" style="color:var(--teal)">—</span>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filtros-bar">
+        <div class="panel-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Buscar cliente, celular o perfil..."/>
+        </div>
+        <div class="filtro-tabs">
+          <button class="filtro-tab active" data-filtro="todos">Todos</button>
+          <button class="filtro-tab" data-filtro="libre">Libres</button>
+          <button class="filtro-tab" data-filtro="activo">Activos</button>
+          <button class="filtro-tab" data-filtro="vencido">Vencidos</button>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="stock-panel">
+        <div class="table-wrap" id="tableWrap">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Plataforma</th>
+                <th>Perfil</th>
+                <th>Cliente</th>
+                <th>Celular</th>
+                <th>Pin</th>
+                <th>Vencimiento</th>
+                <th>Estado</th>
+                <th>Costo</th>
+                <th>Venta</th>
+                <th>Ganancia</th>
+                <th>Extra</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tableCuerpo"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL ASIGNAR / EDITAR -->
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <div class="modal">
+
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">Asignar Perfil</h2>
+        <button class="modal-close" id="modalClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Opcion perfil extra -->
+        <div class="extra-toggle">
+          <label class="toggle-wrap">
+            <input type="checkbox" id="fExtra"/>
+            <span class="toggle-slider"></span>
+          </label>
+          <div>
+            <span class="toggle-label">Perfil extra (sobreventa)</span>
+            <span class="toggle-sub">Agrega un perfil adicional aunque la cuenta esté llena</span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+
+          <!-- Cuenta madre -->
+          <div class="field-group full">
+            <label for="fCuenta">Cuenta Madre <span class="req">*</span></label>
+            <select id="fCuenta">
+              <option value="">Selecciona una cuenta...</option>
+            </select>
+          </div>
+
+          <!-- Nombre perfil -->
+          <div class="field-group">
+            <label for="fNombrePerfil">Nombre del Perfil <span class="req">*</span></label>
+            <select id="fNombrePerfil">
+              <option value="">Selecciona cuenta primero...</option>
+            </select>
+          </div>
+
+          <!-- Cliente -->
+          <div class="field-group">
+            <label for="fCliente">Nombre del Cliente <span class="req">*</span></label>
+            <input type="text" id="fCliente" placeholder="Ej: Juan Pérez"/>
+          </div>
+
+          <!-- Celular -->
+          <div class="field-group">
+            <label for="fCelular">Celular <span class="req">*</span></label>
+            <input type="text" id="fCelular" placeholder="Ej: 987654321"/>
+          </div>
+
+          <!-- Pin -->
+          <div class="field-group">
+            <label for="fPin">PIN del Perfil <span class="opt">(opcional)</span></label>
+            <input type="text" id="fPin" placeholder="Ej: 1234" maxlength="6"/>
+          </div>
+
+          <!-- Fecha vencimiento -->
+          <div class="field-group">
+            <label for="fVencimiento">Fecha de Vencimiento <span class="req">*</span></label>
+            <input type="date" id="fVencimiento"/>
+          </div>
+
+          <!-- Precio venta -->
+          <div class="field-group">
+            <label for="fPrecioVenta">Precio de Venta <span class="req">*</span></label>
+            <div class="input-prefix">
+              <span class="prefix">S/</span>
+              <input type="number" id="fPrecioVenta" placeholder="0.00" min="0" step="0.01"/>
+            </div>
+          </div>
+
+          <!-- Costo y ganancia (calculados) -->
+          <div class="field-group">
+            <label>Costo / Ganancia</label>
+            <div class="calc-display">
+              <div class="calc-item">
+                <span class="calc-lbl">Costo</span>
+                <span class="calc-val red" id="displayCosto">S/ 0.00</span>
+              </div>
+              <div class="calc-sep">→</div>
+              <div class="calc-item">
+                <span class="calc-lbl">Ganancia</span>
+                <span class="calc-val green" id="displayGanancia">S/ 0.00</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" id="btnCancel">Cancelar</button>
+        <button class="btn-guardar" id="btnGuardar">
+          <span id="btnGuardarText">Guardar</span>
+          <span id="btnGuardarSpinner" hidden>
+            <svg class="spinner-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10" stroke-opacity="0.2"/><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAR ELIMINAR -->
+  <div class="modal-overlay" id="deleteOverlay" hidden>
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title">¿Liberar perfil?</h2>
+        <button class="modal-close" id="deleteClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-msg">Esto quitará al cliente del perfil y lo dejará como <strong>libre</strong> nuevamente.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" id="deleteCancelBtn">Cancelar</button>
+        <button class="btn-delete" id="deleteConfirmBtn">Sí, liberar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="perfiles.js"></script>
+</body>
+</html>
