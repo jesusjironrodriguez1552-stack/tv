@@ -19,7 +19,6 @@ const PLATAFORMAS = {
 let cuentas = [], editandoId = null, eliminandoId = null, plataformaSel = null;
 const $ = id => document.getElementById(id);
 
-// DOM
 const modalOverlay    = $('modalOverlay');
 const deleteOverlay   = $('deleteOverlay');
 const tableWrap       = $('tableWrap');
@@ -33,7 +32,7 @@ const fNotas          = $('fNotas');
 const costoDisplay    = $('costoPorPerfil');
 const plataformasGrid = $('plataformasGrid');
 
-// Costo por perfil
+// Costo por perfil en tiempo real
 function calcularCosto() {
   const precio = parseFloat(fPrecio.value) || 0;
   const perfs  = parseInt(fPerfiles.value) || 0;
@@ -56,12 +55,17 @@ plataformasGrid.querySelectorAll('.plat-btn').forEach(btn => {
   });
 });
 
-// Modal nueva/editar
+// Abrir modal
 function abrirModal(cuenta = null) {
   editandoId    = cuenta ? cuenta.id : null;
   plataformaSel = cuenta ? cuenta.plataforma : null;
   $('modalTitle').textContent     = cuenta ? 'Editar Cuenta' : 'Nueva Cuenta Madre';
   $('btnGuardarText').textContent = cuenta ? 'Actualizar'    : 'Guardar Cuenta';
+
+  // Si es edicion, deshabilitar perfiles y precio (no se editan)
+  fPerfiles.disabled = !!cuenta;
+  fPrecio.disabled   = !!cuenta;
+
   plataformasGrid.querySelectorAll('.plat-btn').forEach(b =>
     b.classList.toggle('selected', cuenta ? b.dataset.plat === cuenta.plataforma : false)
   );
@@ -75,48 +79,98 @@ function abrirModal(cuenta = null) {
   modalOverlay.hidden = false;
 }
 
-function cerrarModal() { modalOverlay.hidden = true; }
+function cerrarModal() {
+  modalOverlay.hidden = true;
+  fPerfiles.disabled  = false;
+  fPrecio.disabled    = false;
+}
 
 $('btnNueva').addEventListener('click',   () => abrirModal());
 $('modalClose').addEventListener('click', cerrarModal);
 $('btnCancel').addEventListener('click',  cerrarModal);
 modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) cerrarModal(); });
 
-// Guardar
+// Guardar cuenta + crear perfiles automaticamente
 $('btnGuardar').addEventListener('click', async () => {
   if (!plataformaSel) return alert('Selecciona una plataforma.');
-  if (!fEmail.value.trim() || !fPassword.value.trim()) return alert('Correo y contrasena son obligatorios.');
-  if (!fPerfiles.value || parseInt(fPerfiles.value) < 1) return alert('Cantidad de perfiles invalida.');
+  if (!fEmail.value.trim() || !fPassword.value.trim()) return alert('Correo y contrasena obligatorios.');
+
+  const esNueva = !editandoId;
+
+  if (esNueva && (!fPerfiles.value || parseInt(fPerfiles.value) < 1))
+    return alert('Cantidad de perfiles invalida.');
 
   const payload = {
     plataforma:       plataformaSel,
     email:            fEmail.value.trim(),
     password:         fPassword.value.trim(),
-    max_perfiles:     parseInt(fPerfiles.value),
-    precio_compra:    parseFloat(fPrecio.value) || 0,
     fecha_renovacion: fRenovacion.value || null,
     notas:            fNotas.value.trim() || null,
     activa:           true,
   };
 
-  $('btnGuardar').disabled        = true;
-  $('btnGuardarText').hidden      = true;
-  $('btnGuardarSpinner').hidden   = false;
+  if (esNueva) {
+    payload.max_perfiles  = parseInt(fPerfiles.value);
+    payload.precio_compra = parseFloat(fPrecio.value) || 0;
+  }
 
-  const { error } = editandoId
-    ? await supabase.from('cuentas_madres').update(payload).eq('id', editandoId)
-    : await supabase.from('cuentas_madres').insert(payload);
+  $('btnGuardar').disabled      = true;
+  $('btnGuardarText').hidden    = true;
+  $('btnGuardarSpinner').hidden = false;
 
-  $('btnGuardar').disabled        = false;
-  $('btnGuardarText').hidden      = false;
-  $('btnGuardarSpinner').hidden   = true;
+  let cuentaId = editandoId;
 
-  if (error) return alert('Error: ' + error.message);
+  if (esNueva) {
+    const { data, error } = await supabase
+      .from('cuentas_madres').insert(payload).select().single();
+    if (error) {
+      alert('Error: ' + error.message);
+      $('btnGuardar').disabled      = false;
+      $('btnGuardarText').hidden    = false;
+      $('btnGuardarSpinner').hidden = true;
+      return;
+    }
+    cuentaId = data.id;
+
+    // Crear perfiles libres automaticamente
+    const perfilesNuevos = Array.from({ length: payload.max_perfiles }, (_, i) => ({
+      cuenta_madre_id: cuentaId,
+      nombre_perfil:   `Perfil ${i + 1}`,
+      estado:          'libre',
+    }));
+    await supabase.from('perfiles').insert(perfilesNuevos);
+
+  } else {
+    const { error } = await supabase
+      .from('cuentas_madres').update(payload).eq('id', editandoId);
+    if (error) {
+      alert('Error: ' + error.message);
+      $('btnGuardar').disabled      = false;
+      $('btnGuardarText').hidden    = false;
+      $('btnGuardarSpinner').hidden = true;
+      return;
+    }
+  }
+
+  $('btnGuardar').disabled      = false;
+  $('btnGuardarText').hidden    = false;
+  $('btnGuardarSpinner').hidden = true;
   cerrarModal();
   cargarCuentas();
 });
 
-// Eliminar
+// Renovar +30 dias
+async function renovar(id, fechaActual) {
+  const base = fechaActual ? new Date(fechaActual + 'T00:00:00') : new Date();
+  base.setDate(base.getDate() + 30);
+  const nueva = base.toISOString().split('T')[0];
+  const { error } = await supabase
+    .from('cuentas_madres').update({ fecha_renovacion: nueva }).eq('id', id);
+  if (error) return alert('Error al renovar: ' + error.message);
+  cargarCuentas();
+}
+
+// Eliminar (perfiles quedan huerfanos con SET NULL)
 $('deleteClose').addEventListener('click',     () => { deleteOverlay.hidden = true; });
 $('deleteCancelBtn').addEventListener('click', () => { deleteOverlay.hidden = true; });
 deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) deleteOverlay.hidden = true; });
@@ -145,7 +199,7 @@ function renderTabla(data) {
   tableCuerpo.innerHTML = '';
 
   if (!data || data.length === 0) {
-    tableCuerpo.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted2)">No hay cuentas registradas.</td></tr>`;
+    tableCuerpo.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted2)">No hay cuentas registradas. Crea una con "+ Nueva Cuenta".</td></tr>`;
     return;
   }
 
@@ -175,16 +229,22 @@ function renderTabla(data) {
       <td>${renov}</td>
       <td><span class="estado-badge ${c.activa ? 'estado-activa' : 'estado-inactiva'}">${c.activa ? 'Activa' : 'Inactiva'}</span></td>
       <td><div class="acciones-cell">
-        <button class="btn-accion edit" data-id="${c.id}">
+        <button class="btn-accion renov" data-id="${c.id}" data-fecha="${c.fecha_renovacion || ''}" title="Renovar +30 dias">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </button>
+        <button class="btn-accion edit" data-id="${c.id}" title="Editar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="btn-accion del" data-id="${c.id}">
+        <button class="btn-accion del" data-id="${c.id}" title="Eliminar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         </button>
       </div></td>`;
     tableCuerpo.appendChild(tr);
   });
 
+  tableCuerpo.querySelectorAll('.btn-accion.renov').forEach(btn => {
+    btn.addEventListener('click', () => renovar(btn.dataset.id, btn.dataset.fecha));
+  });
   tableCuerpo.querySelectorAll('.btn-accion.edit').forEach(btn => {
     btn.addEventListener('click', () => {
       const c = cuentas.find(x => x.id === btn.dataset.id);
@@ -219,7 +279,9 @@ async function cargarCuentas() {
 
 function filtrar(data) {
   const q = $('searchInput').value.trim().toLowerCase();
-  return q ? data.filter(c => c.plataforma.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)) : data;
+  return q ? data.filter(c =>
+    c.plataforma.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)
+  ) : data;
 }
 
 $('searchInput').addEventListener('input', () => renderTabla(filtrar(cuentas)));
