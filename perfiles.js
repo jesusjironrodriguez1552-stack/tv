@@ -216,6 +216,20 @@ $('btnGuardar').addEventListener('click', async () => {
         precio_venta:      precioVenta,
         estado:            'activo',
       }).eq('id', editandoId));
+
+      if (!error) {
+        // Eliminar un perfil libre de la cuenta destino para no inflar el stock
+        const { data: libreEnCuenta } = await supabase
+          .from('perfiles')
+          .select('id')
+          .eq('cuenta_madre_id', cuentaId)
+          .eq('estado', 'libre')
+          .limit(1)
+          .single();
+        if (libreEnCuenta) {
+          await supabase.from('perfiles').delete().eq('id', libreEnCuenta.id);
+        }
+      }
     } else {
       // Actualizar perfil existente normal
       ({ error } = await supabase.from('perfiles').update({
