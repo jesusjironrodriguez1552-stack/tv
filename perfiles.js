@@ -129,14 +129,24 @@ async function abrirModal(perfil = null) {
   await cargarCuentas();
 
   if (perfil) {
-    // Edicion: setear cuenta
-    fCuenta.value = perfil.cuenta_madre_id || '';
-    fExtra.checked = perfil.extra || false;
-    await fCuenta.dispatchEvent(new Event('change'));
-    // Setear perfil seleccionado
-    fNombrePerfil.value = perfil.id;
-    fNombrePerfil.disabled = true;
-    fCuenta.disabled       = true;
+    const esHuerfano = !perfil.cuenta_madre_id;
+
+    // Si es huérfano, la cuenta y el perfil quedan habilitados para reasignar
+    fCuenta.value      = perfil.cuenta_madre_id || '';
+    fExtra.checked     = perfil.extra || false;
+
+    if (esHuerfano) {
+      // Huérfano: permitir elegir nueva cuenta madre
+      fCuenta.disabled       = false;
+      fNombrePerfil.disabled = true;
+      fNombrePerfil.innerHTML = `<option value="${perfil.id}">${perfil.nombre_perfil}</option>`;
+    } else {
+      await fCuenta.dispatchEvent(new Event('change'));
+      fNombrePerfil.value    = perfil.id;
+      fNombrePerfil.disabled = true;
+      fCuenta.disabled       = true;
+    }
+
     fCliente.value      = perfil.cliente_nombre    || '';
     fCelular.value      = perfil.cliente_celular   || '';
     fPin.value          = perfil.pin               || '';
@@ -192,15 +202,31 @@ $('btnGuardar').addEventListener('click', async () => {
   let error;
 
   if (editandoId) {
-    // Actualizar perfil existente
-    ({ error } = await supabase.from('perfiles').update({
-      cliente_nombre:   cliente,
-      cliente_celular:  celular,
-      pin:              fPin.value.trim() || null,
-      fecha_vencimiento: vencimiento,
-      precio_venta:     precioVenta,
-      estado:           'activo',
-    }).eq('id', editandoId));
+    const perfilActual = perfiles.find(x => x.id === editandoId);
+    const esHuerfano   = !perfilActual?.cuenta_madre_id;
+
+    if (esHuerfano) {
+      // Reasignar cuenta madre al perfil huérfano
+      ({ error } = await supabase.from('perfiles').update({
+        cuenta_madre_id:   cuentaId,
+        cliente_nombre:    cliente,
+        cliente_celular:   celular,
+        pin:               fPin.value.trim() || null,
+        fecha_vencimiento: vencimiento,
+        precio_venta:      precioVenta,
+        estado:            'activo',
+      }).eq('id', editandoId));
+    } else {
+      // Actualizar perfil existente normal
+      ({ error } = await supabase.from('perfiles').update({
+        cliente_nombre:   cliente,
+        cliente_celular:  celular,
+        pin:              fPin.value.trim() || null,
+        fecha_vencimiento: vencimiento,
+        precio_venta:     precioVenta,
+        estado:           'activo',
+      }).eq('id', editandoId));
+    }
 
   } else if (perfilId === '__nuevo__' || esExtra) {
     // Crear perfil extra nuevo
@@ -280,6 +306,7 @@ $('deleteConfirmBtn').addEventListener('click', async () => {
 
 // ── Estado visual ─────────────────────────────────────────────
 function getEstadoVisual(p) {
+  if (!p.cuenta_madre_id) return { clase: 'estado-huerfano', texto: '⚠ Sin cuenta madre' };
   if (p.estado === 'libre') return { clase: 'estado-libre', texto: 'Libre' };
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   const venc = p.fecha_vencimiento ? new Date(p.fecha_vencimiento + 'T00:00:00') : null;
@@ -300,16 +327,21 @@ function renderTabla(data) {
   }
 
   data.forEach(p => {
+    const esHuerfano = !p.cuenta_madre_id;
     const cuenta = cuentas.find(c => c.id === p.cuenta_madre_id);
     const plat   = p.cuentas_madres?.plataforma || cuenta?.plataforma || '—';
-    const info   = PLATAFORMAS[plat] || { color: '#555', label: plat.slice(0,3).toUpperCase() };
+    const info   = esHuerfano
+      ? { color: '#7c3aed', label: '?' }
+      : (PLATAFORMAS[plat] || { color: '#555', label: plat.slice(0,3).toUpperCase() });
     const ev     = getEstadoVisual(p);
 
-    const costo  = cuenta
-      ? (parseFloat(cuenta.precio_compra) / (cuenta.max_perfiles || 1)).toFixed(2)
-      : (p.cuentas_madres
-        ? (parseFloat(p.cuentas_madres.precio_compra) / (p.cuentas_madres.max_perfiles || 1)).toFixed(2)
-        : '—');
+    const costo  = esHuerfano
+      ? '—'
+      : cuenta
+        ? (parseFloat(cuenta.precio_compra) / (cuenta.max_perfiles || 1)).toFixed(2)
+        : (p.cuentas_madres
+          ? (parseFloat(p.cuentas_madres.precio_compra) / (p.cuentas_madres.max_perfiles || 1)).toFixed(2)
+          : '—');
     const venta  = p.precio_venta ? parseFloat(p.precio_venta).toFixed(2) : '—';
     const ganNum = p.precio_venta && costo !== '—' ? (parseFloat(p.precio_venta) - parseFloat(costo)) : null;
     const ganTxt = ganNum !== null ? `S/ ${ganNum.toFixed(2)}` : '—';
@@ -320,10 +352,12 @@ function renderTabla(data) {
       : '—';
 
     const tr = document.createElement('tr');
+    if (esHuerfano) tr.classList.add('fila-huerfana');
+
     tr.innerHTML = `
       <td><div class="plat-cell">
         <div class="plat-badge" style="background:${info.color}">${info.label}</div>
-        <span class="plat-name">${plat}</span>
+        <span class="plat-name">${esHuerfano ? 'Sin cuenta' : plat}</span>
       </div></td>
       <td>${p.nombre_perfil}</td>
       <td>${p.cliente_nombre || '—'}</td>
@@ -336,14 +370,14 @@ function renderTabla(data) {
       <td class="${ganCls}">${ganTxt}</td>
       <td>${p.extra ? '<span class="badge-extra">Extra</span>' : '—'}</td>
       <td><div class="acciones-cell">
-        ${p.estado !== 'libre' ? `
+        ${p.estado !== 'libre' && !esHuerfano ? `
         <button class="btn-accion renov" data-id="${p.id}" data-fecha="${p.fecha_vencimiento||''}" title="Renovar +30 días">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         </button>` : ''}
-        <button class="btn-accion edit" data-id="${p.id}" title="Editar">
+        <button class="btn-accion edit ${esHuerfano ? 'huerfano' : ''}" data-id="${p.id}" title="${esHuerfano ? 'Reasignar cuenta madre' : 'Editar'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        ${p.estado !== 'libre' ? `
+        ${p.estado !== 'libre' && !esHuerfano ? `
         <button class="btn-accion del" data-id="${p.id}" title="Liberar perfil">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
         </button>` : ''}
@@ -371,10 +405,10 @@ function renderTabla(data) {
 // ── Stats ─────────────────────────────────────────────────────
 function actualizarStats(data) {
   const hoy    = new Date(); hoy.setHours(0,0,0,0);
-  const en5    = new Date(hoy); en5.setDate(hoy.getDate() + 5);
-  let libres = 0, activos = 0, porVencer = 0, vencidos = 0, ingresos = 0;
+  let libres = 0, activos = 0, porVencer = 0, vencidos = 0, ingresos = 0, huerfanos = 0;
 
   data.forEach(p => {
+    if (!p.cuenta_madre_id) { huerfanos++; return; }
     if (p.estado === 'libre') { libres++; return; }
     const venc = p.fecha_vencimiento ? new Date(p.fecha_vencimiento + 'T00:00:00') : null;
     const dias = venc ? Math.ceil((venc - hoy) / 86400000) : 999;
@@ -395,6 +429,7 @@ function actualizarStats(data) {
   $('statPorVencer').textContent = porVencer;
   $('statVencidos').textContent  = vencidos;
   $('statIngresos').textContent  = `S/ ${ingresos.toFixed(2)}`;
+  $('statHuerfanos').textContent = huerfanos;
 }
 
 // ── Filtrar ───────────────────────────────────────────────────
@@ -404,6 +439,7 @@ function filtrar(data) {
 
   if (filtroActivo !== 'todos') {
     result = result.filter(p => {
+      if (filtroActivo === 'huerfano') return !p.cuenta_madre_id;
       if (filtroActivo === 'libre')   return p.estado === 'libre';
       if (filtroActivo === 'vencido') {
         if (!p.fecha_vencimiento) return false;
