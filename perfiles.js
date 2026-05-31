@@ -48,9 +48,9 @@ async function cargarCuentas() {
   fCuenta.innerHTML = '<option value="">Selecciona una cuenta...</option>';
   cuentas.forEach(c => {
     const opt = document.createElement('option');
-    opt.value             = c.id;
-    opt.textContent       = `${c.plataforma} — ${c.email}`;
-    opt.dataset.precio    = c.precio_compra;
+    opt.value               = c.id;
+    opt.textContent         = `${c.plataforma} — ${c.email}`;
+    opt.dataset.precio      = c.precio_compra;
     opt.dataset.maxPerfiles = c.max_perfiles;
     fCuenta.appendChild(opt);
   });
@@ -71,10 +71,10 @@ fCuenta.addEventListener('change', async () => {
     .eq('cuenta_madre_id', cuentaId)
     .neq('estado', 'libre');
 
-  const opt        = fCuenta.options[fCuenta.selectedIndex];
-  const maxPerf    = parseInt(opt?.dataset?.maxPerfiles) || 0;
+  const opt         = fCuenta.options[fCuenta.selectedIndex];
+  const maxPerf     = parseInt(opt?.dataset?.maxPerfiles) || 0;
   const usadosCount = usados?.length || 0;
-  const esExtra    = fExtra.checked;
+  const esExtra     = fExtra.checked;
   const disponibles = maxPerf - usadosCount;
 
   if (!esExtra && disponibles <= 0) {
@@ -132,23 +132,23 @@ async function abrirModal(perfil = null) {
       fNombrePerfil.disabled = true;
     }
 
-    fCliente.value      = perfil.cliente_nombre    || '';
-    fCelular.value      = perfil.cliente_celular   || '';
-    fPin.value          = perfil.pin               || '';
-    fVencimiento.value  = perfil.fecha_vencimiento || '';
-    fPrecioVenta.value  = perfil.precio_venta      || '';
+    fCliente.value     = perfil.cliente_nombre    || '';
+    fCelular.value     = perfil.cliente_celular   || '';
+    fPin.value         = perfil.pin               || '';
+    fVencimiento.value = perfil.fecha_vencimiento || '';
+    fPrecioVenta.value = perfil.precio_venta      || '';
   } else {
-    fCuenta.value         = '';
-    fExtra.checked        = false;
-    fNombrePerfil.value   = '';
+    fCuenta.value             = '';
+    fExtra.checked            = false;
+    fNombrePerfil.value       = '';
     fNombrePerfil.placeholder = 'Selecciona cuenta primero...';
     fNombrePerfil.disabled    = false;
     fCuenta.disabled          = false;
-    fCliente.value      = '';
-    fCelular.value      = '';
-    fPin.value          = '';
-    fVencimiento.value  = '';
-    fPrecioVenta.value  = '';
+    fCliente.value     = '';
+    fCelular.value     = '';
+    fPin.value         = '';
+    fVencimiento.value = '';
+    fPrecioVenta.value = '';
   }
   actualizarCalc();
   modalOverlay.hidden = false;
@@ -167,13 +167,13 @@ modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) cer
 
 // ── Guardar perfil ────────────────────────────────────────────
 $('btnGuardar').addEventListener('click', async () => {
-  const cuentaId    = fCuenta.value;
+  const cuentaId     = fCuenta.value;
   const nombrePerfil = fNombrePerfil.value.trim();
-  const cliente     = fCliente.value.trim();
-  const celular     = fCelular.value.trim();
-  const vencimiento = fVencimiento.value;
-  const precioVenta = parseFloat(fPrecioVenta.value) || 0;
-  const esExtra     = fExtra.checked;
+  const cliente      = fCliente.value.trim();
+  const celular      = fCelular.value.trim();
+  const vencimiento  = fVencimiento.value;
+  const precioVenta  = parseFloat(fPrecioVenta.value) || 0;
+  const esExtra      = fExtra.checked;
 
   if (!cuentaId)     return alert('Selecciona una cuenta madre.');
   if (!nombrePerfil) return alert('El nombre del perfil es obligatorio.');
@@ -212,7 +212,6 @@ $('btnGuardar').addEventListener('click', async () => {
         estado:            'activo',
       }).eq('id', editandoId));
     }
-
   } else {
     ({ error } = await supabase.from('perfiles').insert({
       cuenta_madre_id:   cuentaId,
@@ -237,18 +236,37 @@ $('btnGuardar').addEventListener('click', async () => {
   cargarPerfiles();
 });
 
-// ── Renovar +30 dias ──────────────────────────────────────────
+// ── Renovar +30 dias + WhatsApp ───────────────────────────────
 async function renovar(id, fechaActual) {
   const base = fechaActual ? new Date(fechaActual + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + 30);
   const nueva = base.toISOString().split('T')[0];
+
   const { error } = await supabase
     .from('perfiles').update({ fecha_vencimiento: nueva, estado: 'activo' }).eq('id', id);
   if (error) return alert('Error: ' + error.message);
+
+  // Enviar WhatsApp de confirmación de renovación
+  const p = perfiles.find(x => x.id === id);
+  if (p) {
+    const celular = (p.cliente_celular || '').replace(/\D/g, '');
+    if (celular) {
+      const plat    = p.cuentas_madres?.plataforma || '—';
+      const vencStr = new Date(nueva + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+      const mensaje =
+        `Hola ${p.cliente_nombre || 'cliente'} 👋\n` +
+        `Tu perfil de *${plat}* ha sido *renovado* exitosamente. ✅\n\n` +
+        `📅 *Nueva fecha de vencimiento:* ${vencStr}\n` +
+        (p.pin ? `🔑 *PIN:* ${p.pin}\n` : '') +
+        `\n¡Gracias por tu preferencia! 🙌`;
+      window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
+    }
+  }
+
   cargarPerfiles();
 }
 
-// ── WhatsApp ──────────────────────────────────────────────────
+// ── WhatsApp manual ───────────────────────────────────────────
 function enviarWhatsApp(p) {
   const celular = (p.cliente_celular || '').replace(/\D/g, '');
   if (!celular) return alert('Este perfil no tiene celular registrado.');
@@ -282,11 +300,10 @@ function enviarWhatsApp(p) {
       `\n¡Gracias por tu preferencia! 🙌`;
   }
 
-  const url = `https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`;
-  window.open(url, '_blank');
+  window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
-// ── Liberar perfil ────────────────────────────────────────────
+// ── Liberar / eliminar perfil ─────────────────────────────────
 $('deleteClose').addEventListener('click',     () => { deleteOverlay.hidden = true; });
 $('deleteCancelBtn').addEventListener('click', () => { deleteOverlay.hidden = true; });
 deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) deleteOverlay.hidden = true; });
@@ -429,13 +446,13 @@ function actualizarStats(data) {
     }
   });
 
-  $('statTotal').textContent      = data.length;
-  $('statLibres').textContent     = disponibles;
-  $('statActivos').textContent    = activos;
-  $('statPorVencer').textContent  = porVencer;
-  $('statVencidos').textContent   = vencidos;
-  $('statIngresos').textContent   = `S/ ${ingresos.toFixed(2)}`;
-  $('statHuerfanos').textContent  = huerfanos;
+  $('statTotal').textContent     = data.length;
+  $('statLibres').textContent    = disponibles;
+  $('statActivos').textContent   = activos;
+  $('statPorVencer').textContent = porVencer;
+  $('statVencidos').textContent  = vencidos;
+  $('statIngresos').textContent  = `S/ ${ingresos.toFixed(2)}`;
+  $('statHuerfanos').textContent = huerfanos;
 }
 
 // ── Filtrar ───────────────────────────────────────────────────
