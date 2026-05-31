@@ -90,7 +90,7 @@ $('modalClose').addEventListener('click', cerrarModal);
 $('btnCancel').addEventListener('click',  cerrarModal);
 modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) cerrarModal(); });
 
-// Guardar cuenta + crear perfiles automaticamente
+// ── Guardar cuenta ────────────────────────────────────────────
 $('btnGuardar').addEventListener('click', async () => {
   if (!plataformaSel) return alert('Selecciona una plataforma.');
   if (!fEmail.value.trim() || !fPassword.value.trim()) return alert('Correo y contrasena obligatorios.');
@@ -118,11 +118,9 @@ $('btnGuardar').addEventListener('click', async () => {
   $('btnGuardarText').hidden    = true;
   $('btnGuardarSpinner').hidden = false;
 
-  let cuentaId = editandoId;
-
   if (esNueva) {
-    const { data, error } = await supabase
-      .from('cuentas_madres').insert(payload).select().single();
+    // Solo crea la cuenta madre, sin perfiles — los slots son virtuales
+    const { error } = await supabase.from('cuentas_madres').insert(payload);
     if (error) {
       alert('Error: ' + error.message);
       $('btnGuardar').disabled      = false;
@@ -130,16 +128,6 @@ $('btnGuardar').addEventListener('click', async () => {
       $('btnGuardarSpinner').hidden = true;
       return;
     }
-    cuentaId = data.id;
-
-    // Crear perfiles libres automaticamente
-    const perfilesNuevos = Array.from({ length: payload.max_perfiles }, (_, i) => ({
-      cuenta_madre_id: cuentaId,
-      nombre_perfil:   `Perfil ${i + 1}`,
-      estado:          'libre',
-    }));
-    await supabase.from('perfiles').insert(perfilesNuevos);
-
   } else {
     const { error } = await supabase
       .from('cuentas_madres').update(payload).eq('id', editandoId);
@@ -159,7 +147,7 @@ $('btnGuardar').addEventListener('click', async () => {
   cargarCuentas();
 });
 
-// Renovar +30 dias
+// ── Renovar +30 dias ──────────────────────────────────────────
 async function renovar(id, fechaActual) {
   const base = fechaActual ? new Date(fechaActual + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + 30);
@@ -170,7 +158,7 @@ async function renovar(id, fechaActual) {
   cargarCuentas();
 }
 
-// Eliminar (perfiles quedan huerfanos con SET NULL)
+// ── Eliminar (perfiles activos quedan huerfanos con SET NULL via trigger) ──
 $('deleteClose').addEventListener('click',     () => { deleteOverlay.hidden = true; });
 $('deleteCancelBtn').addEventListener('click', () => { deleteOverlay.hidden = true; });
 deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) deleteOverlay.hidden = true; });
@@ -183,7 +171,7 @@ $('deleteConfirmBtn').addEventListener('click', async () => {
   cargarCuentas();
 });
 
-// Toggle pass en tabla
+// ── Toggle pass en tabla ──────────────────────────────────────
 window.togglePassTabla = function(btn) {
   const cell = btn.parentElement;
   const dots = cell.querySelector('.pass-dots');
@@ -193,7 +181,7 @@ window.togglePassTabla = function(btn) {
   text.style.display = vis ? 'none'   : 'inline';
 };
 
-// Render tabla
+// ── Render tabla ──────────────────────────────────────────────
 function renderTabla(data) {
   tableWrap.hidden      = false;
   tableCuerpo.innerHTML = '';
@@ -259,6 +247,7 @@ function renderTabla(data) {
   });
 }
 
+// ── Stats ─────────────────────────────────────────────────────
 function actualizarStats(data) {
   const perfs = data.reduce((s, c) => s + (c.max_perfiles || 0), 0);
   const inv   = data.reduce((s, c) => s + (parseFloat(c.precio_compra) || 0), 0);
@@ -268,6 +257,7 @@ function actualizarStats(data) {
   $('qsCostoPerfil').textContent   = `S/ ${perfs > 0 ? (inv/perfs).toFixed(2) : '0.00'}`;
 }
 
+// ── Cargar cuentas ────────────────────────────────────────────
 async function cargarCuentas() {
   const { data, error } = await supabase
     .from('cuentas_madres').select('*').order('created_at', { ascending: false });
