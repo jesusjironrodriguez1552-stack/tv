@@ -180,3 +180,6 @@ select option { background: var(--surface2); }
 .fila-huerfana { border-left: 2px solid rgba(167,139,250,.5); }
 .fila-huerfana:hover { background: rgba(167,139,250,.04) !important; }
 .btn-accion.huerfano:hover { background: rgba(167,139,250,.1); color: var(--purple); border-color: rgba(167,139,250,.3); }
+
+/* ── WhatsApp ───────────────────────────────────────────────── */
+.btn-accion.wsp:hover { background: rgba(37,211,102,.1); color: #25d366; border-color: rgba(37,211,102,.25); }
