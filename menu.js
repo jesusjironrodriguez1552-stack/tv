@@ -1,13 +1,10 @@
 // ============================================================
 //  menu.js — Dashboard StreamVault (sin sidebar)
 // ============================================================
-
 import { requireAuth, signOut, supabase } from './supabase.js';
-
 // ── Guard: requiere sesión ───────────────────────────────────
 const session = await requireAuth('index.html');
 const userId  = session.user.id;
-
 // ── Fecha de hoy ─────────────────────────────────────────────
 function setFecha() {
   const now  = new Date();
@@ -17,7 +14,6 @@ function setFecha() {
     str.charAt(0).toUpperCase() + str.slice(1);
 }
 setFecha();
-
 // ── Datos del admin ───────────────────────────────────────────
 async function loadAdminInfo() {
   const { data, error } = await supabase
@@ -25,7 +21,6 @@ async function loadAdminInfo() {
     .select('nombre')
     .eq('id', userId)
     .single();
-
   if (!error && data) {
     const nombre = data.nombre;
     document.getElementById('userName').textContent    = nombre;
@@ -34,16 +29,13 @@ async function loadAdminInfo() {
   }
 }
 loadAdminInfo();
-
 // ── Estadísticas ──────────────────────────────────────────────
 async function loadStats() {
-  const hoy   = new Date();
+  const hoy    = new Date();
   const hoyStr = hoy.toISOString().split('T')[0];
-
   const en5    = new Date(hoy);
   en5.setDate(hoy.getDate() + 5);
   const en5Str = en5.toISOString().split('T')[0];
-
   // Helper: query segura con fallback a 0
   async function count(table, filters = []) {
     let q = supabase.from(table).select('*', { count: 'exact', head: true });
@@ -56,22 +48,31 @@ async function loadStats() {
     const { count: c, error } = await q;
     return error ? null : (c ?? 0);
   }
-
   // Cuentas madres
   const cuentas = await count('cuentas_madres');
   document.getElementById('totalCuentas').textContent =
     cuentas !== null ? cuentas : '—';
-
   // Perfiles totales
   const perfiles = await count('perfiles');
   document.getElementById('totalPerfiles').textContent =
     perfiles !== null ? perfiles : '—';
-
-  // Perfiles libres
-  const libres = await count('perfiles', [['estado', 'eq', 'libre']]);
-  document.getElementById('totalLibres').textContent  = libres !== null ? libres : '—';
-  document.getElementById('statLibres').textContent   = libres !== null ? libres : '—';
-
+  // Slots libres: max_perfiles de cada cuenta menos sus perfiles activos
+  const { data: cuentasData } = await supabase
+    .from('cuentas_madres')
+    .select('id, max_perfiles')
+    .eq('activa', true);
+  const { data: activosData } = await supabase
+    .from('perfiles')
+    .select('cuenta_madre_id')
+    .not('cuenta_madre_id', 'is', null)
+    .eq('extra', false);
+  let libres = 0;
+  (cuentasData || []).forEach(c => {
+    const usados = (activosData || []).filter(p => p.cuenta_madre_id === c.id).length;
+    libres += Math.max(0, (c.max_perfiles || 0) - usados);
+  });
+  document.getElementById('totalLibres').textContent = libres;
+  document.getElementById('statLibres').textContent  = libres;
   // Vencidos (fecha_vencimiento pasada y estado activo)
   const vencidos = await count('perfiles', [
     ['estado', 'eq', 'activo'],
@@ -79,7 +80,6 @@ async function loadStats() {
   ]);
   document.getElementById('totalVencidos').textContent = vencidos !== null ? vencidos : '—';
   document.getElementById('statVencidos').textContent  = vencidos !== null ? vencidos : '—';
-
   // Por vencer (próximos 5 días)
   const porVencer = await count('perfiles', [
     ['estado', 'eq', 'activo'],
@@ -90,7 +90,6 @@ async function loadStats() {
     porVencer !== null ? porVencer : '—';
 }
 loadStats();
-
 // ── Logout ────────────────────────────────────────────────────
 document.getElementById('btnLogout').addEventListener('click', async () => {
   await signOut('index.html');
