@@ -65,7 +65,6 @@ fCuenta.addEventListener('change', async () => {
     return;
   }
 
-  // Calcular slots usados (activos + extras)
   const { data: usados } = await supabase
     .from('perfiles')
     .select('id')
@@ -194,7 +193,6 @@ $('btnGuardar').addEventListener('click', async () => {
     const esHuerfano   = !perfilActual?.cuenta_madre_id;
 
     if (esHuerfano) {
-      // Reasignar cuenta madre al perfil huérfano
       ({ error } = await supabase.from('perfiles').update({
         cuenta_madre_id:   cuentaId,
         cliente_nombre:    cliente,
@@ -205,7 +203,6 @@ $('btnGuardar').addEventListener('click', async () => {
         estado:            'activo',
       }).eq('id', editandoId));
     } else {
-      // Actualizar perfil existente normal
       ({ error } = await supabase.from('perfiles').update({
         cliente_nombre:    cliente,
         cliente_celular:   celular,
@@ -217,7 +214,6 @@ $('btnGuardar').addEventListener('click', async () => {
     }
 
   } else {
-    // Siempre insert: sea normal o extra
     ({ error } = await supabase.from('perfiles').insert({
       cuenta_madre_id:   cuentaId,
       nombre_perfil:     nombrePerfil,
@@ -252,7 +248,45 @@ async function renovar(id, fechaActual) {
   cargarPerfiles();
 }
 
-// ── Liberar perfil → ahora elimina la fila directamente ───────
+// ── WhatsApp ──────────────────────────────────────────────────
+function enviarWhatsApp(p) {
+  const celular = (p.cliente_celular || '').replace(/\D/g, '');
+  if (!celular) return alert('Este perfil no tiene celular registrado.');
+
+  const plat    = p.cuentas_madres?.plataforma || '—';
+  const vencStr = p.fecha_vencimiento
+    ? new Date(p.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
+    : '—';
+
+  const ev = getEstadoVisual(p);
+  let mensaje = '';
+
+  if (ev.clase === 'estado-vencido') {
+    mensaje =
+      `Hola ${p.cliente_nombre || 'cliente'} 👋\n` +
+      `Tu perfil de *${plat}* ha *vencido* el ${vencStr}.\n` +
+      `Para renovar y seguir disfrutando, contáctanos. 🎬`;
+  } else if (ev.clase === 'estado-por-vencer') {
+    mensaje =
+      `Hola ${p.cliente_nombre || 'cliente'} 👋\n` +
+      `Te recordamos que tu perfil de *${plat}* vence el *${vencStr}*.\n` +
+      `Renueva a tiempo para no perder acceso. 🎬`;
+  } else {
+    mensaje =
+      `Hola ${p.cliente_nombre || 'cliente'} 👋\n` +
+      `Aquí están los datos de tu perfil:\n\n` +
+      `📺 *Plataforma:* ${plat}\n` +
+      `👤 *Perfil:* ${p.nombre_perfil || '—'}\n` +
+      `📅 *Vence:* ${vencStr}\n` +
+      (p.pin ? `🔑 *PIN:* ${p.pin}\n` : '') +
+      `\n¡Gracias por tu preferencia! 🙌`;
+  }
+
+  const url = `https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`;
+  window.open(url, '_blank');
+}
+
+// ── Liberar perfil ────────────────────────────────────────────
 $('deleteClose').addEventListener('click',     () => { deleteOverlay.hidden = true; });
 $('deleteCancelBtn').addEventListener('click', () => { deleteOverlay.hidden = true; });
 deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) deleteOverlay.hidden = true; });
@@ -331,6 +365,9 @@ function renderTabla(data) {
       <td class="${ganCls}">${ganTxt}</td>
       <td>${p.extra ? '<span class="badge-extra">Extra</span>' : '—'}</td>
       <td><div class="acciones-cell">
+        <button class="btn-accion wsp" data-id="${p.id}" title="Enviar WhatsApp">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+        </button>
         ${!esHuerfano ? `
         <button class="btn-accion renov" data-id="${p.id}" data-fecha="${p.fecha_vencimiento||''}" title="Renovar +30 días">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
@@ -345,6 +382,12 @@ function renderTabla(data) {
     tableCuerpo.appendChild(tr);
   });
 
+  tableCuerpo.querySelectorAll('.btn-accion.wsp').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const p = perfiles.find(x => x.id === btn.dataset.id);
+      if (p) enviarWhatsApp(p);
+    })
+  );
   tableCuerpo.querySelectorAll('.btn-accion.renov').forEach(btn =>
     btn.addEventListener('click', () => renovar(btn.dataset.id, btn.dataset.fecha))
   );
@@ -367,7 +410,6 @@ function actualizarStats(data) {
   const hoy = new Date(); hoy.setHours(0,0,0,0);
   let disponibles = 0, activos = 0, porVencer = 0, vencidos = 0, ingresos = 0, huerfanos = 0;
 
-  // Calcular slots disponibles por cuenta
   cuentas.forEach(c => {
     const usados = perfiles.filter(p => p.cuenta_madre_id === c.id && !p.extra).length;
     disponibles += Math.max(0, (c.max_perfiles || 0) - usados);
