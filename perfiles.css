@@ -21,7 +21,7 @@
   --r:       12px;
 }
 
-/* ── FIX: sin overflow:hidden en html/body para permitir scroll ── */
+/* FIX 1: sin overflow:hidden */
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-b); }
 
 .bg-grid { position: fixed; inset: 0; z-index: 0; background-image: linear-gradient(rgba(59,158,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,158,255,0.025) 1px,transparent 1px); background-size: 48px 48px; pointer-events: none; }
@@ -49,8 +49,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .btn-logout:hover { background: rgba(255,79,106,.1); color: var(--red); border-color: rgba(255,79,106,.28); }
 .btn-logout svg { width: 16px; height: 16px; }
 
-/* Content */
-.content { flex: 1; overflow-y: auto; padding: 28px 36px 40px; display: flex; flex-direction: column; gap: 20px; }
+/* Content — FIX 2: min-height:0 activa el scroll en flexbox */
+.content { flex: 1; min-height: 0; overflow-y: auto; padding: 28px 36px 40px; display: flex; flex-direction: column; gap: 20px; }
 
 /* Stats */
 .quick-stats { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; flex-shrink: 0; }
@@ -86,10 +86,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .plat-name  { font-weight: 600; white-space: nowrap; font-size: .8rem; }
 
 .estado-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: .7rem; font-weight: 600; white-space: nowrap; }
-.estado-libre   { background: rgba(74,222,128,.1);  color: var(--green);  border: 1px solid rgba(74,222,128,.2); }
-.estado-activo  { background: rgba(59,158,255,.1);  color: var(--blue);   border: 1px solid rgba(59,158,255,.2); }
-.estado-vencido { background: rgba(255,79,106,.1);  color: var(--red);    border: 1px solid rgba(255,79,106,.2); }
-.estado-por-vencer { background: rgba(245,166,35,.1); color: var(--amber); border: 1px solid rgba(245,166,35,.2); }
+.estado-libre      { background: rgba(74,222,128,.1);  color: var(--green);  border: 1px solid rgba(74,222,128,.2); }
+.estado-activo     { background: rgba(59,158,255,.1);  color: var(--blue);   border: 1px solid rgba(59,158,255,.2); }
+.estado-vencido    { background: rgba(255,79,106,.1);  color: var(--red);    border: 1px solid rgba(255,79,106,.2); }
+.estado-por-vencer { background: rgba(245,166,35,.1);  color: var(--amber);  border: 1px solid rgba(245,166,35,.2); }
 
 .badge-extra { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: .65rem; font-weight: 700; background: rgba(167,139,250,.1); color: var(--purple); border: 1px solid rgba(167,139,250,.2); }
 
