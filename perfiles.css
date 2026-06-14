@@ -183,3 +183,14 @@ select option { background: var(--surface2); }
 
 /* ── WhatsApp ───────────────────────────────────────────────── */
 .btn-accion.wsp:hover { background: rgba(37,211,102,.1); color: #25d366; border-color: rgba(37,211,102,.25); }
+
+.filtros-plat { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+
+.btn-plat-filtro {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; font-size: 13px;
+}
+.btn-plat-filtro.active { background: var(--plat-color, #555); color: #fff; border-color: transparent; }
+.plat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.plat-count { font-size: 11px; opacity: 0.75; }
