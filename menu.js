@@ -2,9 +2,11 @@
 //  menu.js — Dashboard StreamVault (sin sidebar)
 // ============================================================
 import { requireAuth, signOut, supabase } from './supabase.js';
+
 // ── Guard: requiere sesión ───────────────────────────────────
 const session = await requireAuth('index.html');
 const userId  = session.user.id;
+
 // ── Fecha de hoy ─────────────────────────────────────────────
 function setFecha() {
   const now  = new Date();
@@ -14,6 +16,7 @@ function setFecha() {
     str.charAt(0).toUpperCase() + str.slice(1);
 }
 setFecha();
+
 // ── Datos del admin ───────────────────────────────────────────
 async function loadAdminInfo() {
   const { data, error } = await supabase
@@ -29,6 +32,7 @@ async function loadAdminInfo() {
   }
 }
 loadAdminInfo();
+
 // ── Estadísticas ──────────────────────────────────────────────
 async function loadStats() {
   const hoy    = new Date();
@@ -36,7 +40,7 @@ async function loadStats() {
   const en5    = new Date(hoy);
   en5.setDate(hoy.getDate() + 5);
   const en5Str = en5.toISOString().split('T')[0];
-  // Helper: query segura con fallback a 0
+
   async function count(table, filters = []) {
     let q = supabase.from(table).select('*', { count: 'exact', head: true });
     for (const [col, op, val] of filters) {
@@ -48,24 +52,29 @@ async function loadStats() {
     const { count: c, error } = await q;
     return error ? null : (c ?? 0);
   }
+
   // Cuentas madres
   const cuentas = await count('cuentas_madres');
   document.getElementById('totalCuentas').textContent =
     cuentas !== null ? cuentas : '—';
+
   // Perfiles totales
   const perfiles = await count('perfiles');
   document.getElementById('totalPerfiles').textContent =
     perfiles !== null ? perfiles : '—';
-  // Slots libres: max_perfiles de cada cuenta menos sus perfiles activos
+
+  // Slots libres
   const { data: cuentasData } = await supabase
     .from('cuentas_madres')
-    .select('id, max_perfiles')
+    .select('id, plataforma, max_perfiles')
     .eq('activa', true);
+
   const { data: activosData } = await supabase
     .from('perfiles')
     .select('cuenta_madre_id')
     .not('cuenta_madre_id', 'is', null)
     .eq('extra', false);
+
   let libres = 0;
   (cuentasData || []).forEach(c => {
     const usados = (activosData || []).filter(p => p.cuenta_madre_id === c.id).length;
@@ -73,14 +82,16 @@ async function loadStats() {
   });
   document.getElementById('totalLibres').textContent = libres;
   document.getElementById('statLibres').textContent  = libres;
-  // Vencidos (fecha_vencimiento pasada y estado activo)
+
+  // Vencidos
   const vencidos = await count('perfiles', [
     ['estado', 'eq', 'activo'],
     ['fecha_vencimiento', 'lt', hoyStr]
   ]);
   document.getElementById('totalVencidos').textContent = vencidos !== null ? vencidos : '—';
   document.getElementById('statVencidos').textContent  = vencidos !== null ? vencidos : '—';
-  // Por vencer (próximos 5 días)
+
+  // Por vencer
   const porVencer = await count('perfiles', [
     ['estado', 'eq', 'activo'],
     ['fecha_vencimiento', 'gte', hoyStr],
@@ -88,8 +99,34 @@ async function loadStats() {
   ]);
   document.getElementById('statPorVencer').textContent =
     porVencer !== null ? porVencer : '—';
+
+  // ── Stock por plataforma ──────────────────────────────────
+  const stockPlat = {};
+  (cuentasData || []).forEach(c => {
+    const usados = (activosData || []).filter(p => p.cuenta_madre_id === c.id).length;
+    const lib    = Math.max(0, (c.max_perfiles || 0) - usados);
+    if (!stockPlat[c.plataforma]) stockPlat[c.plataforma] = 0;
+    stockPlat[c.plataforma] += lib;
+  });
+
+  const contenedor = document.getElementById('stockPlataformas');
+  if (contenedor) {
+    contenedor.innerHTML = '';
+    Object.entries(stockPlat)
+      .sort((a, b) => b[1] - a[1])
+      .forEach(([plat, lib]) => {
+        const el = document.createElement('div');
+        el.className = `stock-plat-item ${lib === 0 ? 'llena' : lib <= 1 ? 'casi' : 'ok'}`;
+        el.innerHTML = `
+          <span class="sp-nombre">${plat}</span>
+          <span class="sp-libres">${lib} libre${lib !== 1 ? 's' : ''}</span>
+        `;
+        contenedor.appendChild(el);
+      });
+  }
 }
 loadStats();
+
 // ── Logout ────────────────────────────────────────────────────
 document.getElementById('btnLogout').addEventListener('click', async () => {
   await signOut('index.html');
