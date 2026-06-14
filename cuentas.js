@@ -11,7 +11,7 @@ const PLATAFORMAS = {
   'YouTube Premium': { color: '#FF0000', label: 'YT' },
   'WinTV':           { color: '#1A56DB', label: 'WIN' },
   'DirecTV':         { color: '#0077C8', label: 'DTV' },
-  'Movistar Play':   { color: '#019DF4', label: 'MOV' },
+  'Paramount':   { color: '#019DF4', label: 'MOV' },
   'Claro TV':        { color: '#DA0000', label: 'CLR' },
   'Rakuten':         { color: '#BF0000', label: 'RAK' },
 };
