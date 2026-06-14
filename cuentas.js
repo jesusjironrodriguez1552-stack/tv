@@ -11,7 +11,7 @@ const PLATAFORMAS = {
   'YouTube Premium': { color: '#FF0000', label: 'YT' },
   'WinTV':           { color: '#1A56DB', label: 'WIN' },
   'DirecTV':         { color: '#0077C8', label: 'DTV' },
-  'Paramount':   { color: '#019DF4', label: 'MOV' },
+  'Paramount':       { color: '#019DF4', label: 'PAR' },
   'Claro TV':        { color: '#DA0000', label: 'CLR' },
   'Rakuten':         { color: '#BF0000', label: 'RAK' },
 };
@@ -62,9 +62,9 @@ function abrirModal(cuenta = null) {
   $('modalTitle').textContent     = cuenta ? 'Editar Cuenta' : 'Nueva Cuenta Madre';
   $('btnGuardarText').textContent = cuenta ? 'Actualizar'    : 'Guardar Cuenta';
 
-  // Si es edicion, deshabilitar perfiles y precio (no se editan)
+  // Solo deshabilitar perfiles en edicion, precio si se puede editar
   fPerfiles.disabled = !!cuenta;
-  fPrecio.disabled   = !!cuenta;
+  fPrecio.disabled   = false;
 
   plataformasGrid.querySelectorAll('.plat-btn').forEach(b =>
     b.classList.toggle('selected', cuenta ? b.dataset.plat === cuenta.plataforma : false)
@@ -107,11 +107,11 @@ $('btnGuardar').addEventListener('click', async () => {
     fecha_renovacion: fRenovacion.value || null,
     notas:            fNotas.value.trim() || null,
     activa:           true,
+    precio_compra:    parseFloat(fPrecio.value) || 0,
   };
 
   if (esNueva) {
-    payload.max_perfiles  = parseInt(fPerfiles.value);
-    payload.precio_compra = parseFloat(fPrecio.value) || 0;
+    payload.max_perfiles = parseInt(fPerfiles.value);
   }
 
   $('btnGuardar').disabled      = true;
@@ -119,7 +119,6 @@ $('btnGuardar').addEventListener('click', async () => {
   $('btnGuardarSpinner').hidden = false;
 
   if (esNueva) {
-    // Solo crea la cuenta madre, sin perfiles — los slots son virtuales
     const { error } = await supabase.from('cuentas_madres').insert(payload);
     if (error) {
       alert('Error: ' + error.message);
@@ -158,7 +157,7 @@ async function renovar(id, fechaActual) {
   cargarCuentas();
 }
 
-// ── Eliminar (perfiles activos quedan huerfanos con SET NULL via trigger) ──
+// ── Eliminar ──────────────────────────────────────────────────
 $('deleteClose').addEventListener('click',     () => { deleteOverlay.hidden = true; });
 $('deleteCancelBtn').addEventListener('click', () => { deleteOverlay.hidden = true; });
 deleteOverlay.addEventListener('click', e => { if (e.target === deleteOverlay) deleteOverlay.hidden = true; });
