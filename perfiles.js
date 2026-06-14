@@ -324,7 +324,8 @@ function enviarRecordatorioDatos(p) {
     `🔒 *Contraseña:* ${password}\n` +
     `👤 *Perfil:* ${p.nombre_perfil || '—'}\n` +
     (p.pin ? `🔑 *PIN:* ${p.pin}\n` : '') +
-    `\n⚠️ El servicio se ha desconectado, vuelve a iniciar sesión con estos accesos y confirma que ya funciona. Si aún ves la pantalla cerrada, cierra la app completamente y vuelve a abrirla. 🙌`;
+    `\n⚠️ Tu sesión ha sido cerrada por el sistema.
+Si ves algún error o pantalla anterior, cierra y vuelve a abrir la aplicación e inicia sesión nuevamente.`;
 
   window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
