@@ -127,7 +127,7 @@ async function abrirModal(perfil = null) {
       fNombrePerfil.value    = perfil.nombre_perfil || '';
       fNombrePerfil.disabled = true;
     } else {
-      fCuenta.disabled       = true;
+      fCuenta.disabled       = perfil.extra ? false : true;
       fNombrePerfil.value    = perfil.nombre_perfil || '';
       fNombrePerfil.disabled = true;
     }
@@ -203,14 +203,19 @@ $('btnGuardar').addEventListener('click', async () => {
         estado:            'activo',
       }).eq('id', editandoId));
     } else {
-      ({ error } = await supabase.from('perfiles').update({
+      const updatePayload = {
         cliente_nombre:    cliente,
         cliente_celular:   celular,
         pin:               fPin.value.trim() || null,
         fecha_vencimiento: vencimiento,
         precio_venta:      precioVenta,
         estado:            'activo',
-      }).eq('id', editandoId));
+      };
+      if (perfilActual?.extra) {
+        updatePayload.cuenta_madre_id = cuentaId;
+        updatePayload.extra           = false;
+      }
+      ({ error } = await supabase.from('perfiles').update(updatePayload).eq('id', editandoId));
     }
   } else {
     ({ error } = await supabase.from('perfiles').insert({
