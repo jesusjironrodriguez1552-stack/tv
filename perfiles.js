@@ -11,18 +11,19 @@ const PLATAFORMAS = {
   'YouTube Premium': { color: '#FF0000', label: 'YT' },
   'WinTV':           { color: '#1A56DB', label: 'WIN' },
   'DirecTV':         { color: '#0077C8', label: 'DTV' },
-  'Movistar Play':   { color: '#019DF4', label: 'MOV' },
+  'Paramount':       { color: '#019DF4', label: 'MOV' },
   'Claro TV':        { color: '#DA0000', label: 'CLR' },
   'Rakuten':         { color: '#BF0000', label: 'RAK' },
 };
 
 const $ = id => document.getElementById(id);
 
-let perfiles     = [];
-let cuentas      = [];
-let editandoId   = null;
-let liberandoId  = null;
-let filtroActivo = 'todos';
+let perfiles      = [];
+let cuentas       = [];
+let editandoId    = null;
+let liberandoId   = null;
+let filtroActivo  = 'todos';
+let filtroPlat    = 'todas';
 
 // DOM
 const modalOverlay  = $('modalOverlay');
@@ -324,8 +325,8 @@ function enviarRecordatorioDatos(p) {
     `🔒 *Contraseña:* ${password}\n` +
     `👤 *Perfil:* ${p.nombre_perfil || '—'}\n` +
     (p.pin ? `🔑 *PIN:* ${p.pin}\n` : '') +
-    `\n⚠️ Tu sesión ha sido cerrada por el sistema.
-Si ves algún error o pantalla anterior, cierra y vuelve a abrir la aplicación e inicia sesión nuevamente.`;
+    `\n⚠️ Tu sesión ha sido cerrada por el sistema.\n` +
+    `Si ves algún error o pantalla anterior, cierra y vuelve a abrir la aplicación e inicia sesión nuevamente.`;
 
   window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
@@ -354,6 +355,47 @@ function getEstadoVisual(p) {
   if (dias < 0)  return { clase: 'estado-vencido',    texto: 'Vencido' };
   if (dias <= 5) return { clase: 'estado-por-vencer', texto: `Vence en ${dias}d` };
   return { clase: 'estado-activo', texto: 'Activo' };
+}
+
+// ── Render botones de plataforma ──────────────────────────────
+function renderBotonesPlat() {
+  const contenedor = $('filtrosPlatContainer');
+  if (!contenedor) return;
+
+  // Obtener plataformas únicas de los perfiles cargados
+  const plats = [...new Set(
+    perfiles
+      .filter(p => p.cuentas_madres?.plataforma)
+      .map(p => p.cuentas_madres.plataforma)
+  )].sort();
+
+  contenedor.innerHTML = '';
+
+  // Botón "Todas"
+  const btnTodas = document.createElement('button');
+  btnTodas.className   = `btn-plat-filtro ${filtroPlat === 'todas' ? 'active' : ''}`;
+  btnTodas.textContent = 'Todas';
+  btnTodas.addEventListener('click', () => {
+    filtroPlat = 'todas';
+    renderBotonesPlat();
+    renderTabla(filtrar(perfiles));
+  });
+  contenedor.appendChild(btnTodas);
+
+  plats.forEach(plat => {
+    const info  = PLATAFORMAS[plat] || { color: '#555', label: plat.slice(0,3).toUpperCase() };
+    const count = perfiles.filter(p => p.cuentas_madres?.plataforma === plat).length;
+    const btn   = document.createElement('button');
+    btn.className = `btn-plat-filtro ${filtroPlat === plat ? 'active' : ''}`;
+    btn.style.setProperty('--plat-color', info.color);
+    btn.innerHTML = `<span class="plat-dot" style="background:${info.color}"></span>${plat} <span class="plat-count">${count}</span>`;
+    btn.addEventListener('click', () => {
+      filtroPlat = plat;
+      renderBotonesPlat();
+      renderTabla(filtrar(perfiles));
+    });
+    contenedor.appendChild(btn);
+  });
 }
 
 // ── Render tabla ──────────────────────────────────────────────
@@ -496,6 +538,12 @@ function filtrar(data) {
   const q = $('searchInput').value.trim().toLowerCase();
   let result = data;
 
+  // Filtro por plataforma
+  if (filtroPlat !== 'todas') {
+    result = result.filter(p => p.cuentas_madres?.plataforma === filtroPlat);
+  }
+
+  // Filtro por estado
   if (filtroActivo !== 'todos') {
     result = result.filter(p => {
       if (filtroActivo === 'huerfano') return !p.cuenta_madre_id;
@@ -511,6 +559,7 @@ function filtrar(data) {
     });
   }
 
+  // Filtro por búsqueda
   if (q) {
     result = result.filter(p =>
       (p.cliente_nombre  || '').toLowerCase().includes(q) ||
@@ -518,6 +567,7 @@ function filtrar(data) {
       (p.nombre_perfil   || '').toLowerCase().includes(q)
     );
   }
+
   return result;
 }
 
@@ -531,10 +581,11 @@ async function cargarPerfiles() {
   if (error) { console.error(error); return; }
   perfiles = data || [];
   actualizarStats(perfiles);
+  renderBotonesPlat();
   renderTabla(filtrar(perfiles));
 }
 
-// ── Filtro tabs ───────────────────────────────────────────────
+// ── Filtro tabs estado ────────────────────────────────────────
 document.querySelectorAll('.filtro-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.filtro-tab').forEach(t => t.classList.remove('active'));
