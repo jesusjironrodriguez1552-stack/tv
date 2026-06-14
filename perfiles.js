@@ -302,25 +302,21 @@ function enviarWhatsApp(p) {
   window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
 
-// ── WhatsApp recordatorio de datos ────────────────────────────
+// ── WhatsApp seguridad: cambio de acceso ─────────────────────
 function enviarRecordatorioDatos(p) {
   const celular = (p.cliente_celular || '').replace(/\D/g, '');
   if (!celular) return alert('Este perfil no tiene celular registrado.');
 
-  const plat    = p.cuentas_madres?.plataforma || '—';
-  const email   = p.cuentas_madres?.email      || '—';
-  const vencStr = p.fecha_vencimiento
-    ? new Date(p.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
-    : '—';
+  const plat  = p.cuentas_madres?.plataforma || '—';
+  const email = p.cuentas_madres?.email      || '—';
 
   const mensaje =
     `Hola ${p.cliente_nombre || 'cliente'} 👋\n` +
-    `Te recordamos los datos de tu cuenta:\n\n` +
-    `📺 *Plataforma:* ${plat}\n` +
+    `Por tu seguridad se ha cambiado el acceso a tu cuenta de *${plat}*.\n\n` +
+    `Aquí tus nuevos datos:\n` +
     `📧 *Correo:* ${email}\n` +
     `👤 *Perfil:* ${p.nombre_perfil || '—'}\n` +
     (p.pin ? `🔑 *PIN:* ${p.pin}\n` : '') +
-    `📅 *Vence:* ${vencStr}\n` +
     `\n¡Cualquier duda, aquí estamos! 🙌`;
 
   window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
