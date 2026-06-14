@@ -307,17 +307,19 @@ function enviarRecordatorioDatos(p) {
   const celular = (p.cliente_celular || '').replace(/\D/g, '');
   if (!celular) return alert('Este perfil no tiene celular registrado.');
 
-  const plat  = p.cuentas_madres?.plataforma || '—';
-  const email = p.cuentas_madres?.email      || '—';
+  const plat     = p.cuentas_madres?.plataforma || '—';
+  const email    = p.cuentas_madres?.email      || '—';
+  const password = p.cuentas_madres?.password   || '—';
 
   const mensaje =
     `Hola ${p.cliente_nombre || 'cliente'} 👋\n` +
     `Por tu seguridad se ha cambiado el acceso a tu cuenta de *${plat}*.\n\n` +
     `Aquí tus nuevos datos:\n` +
     `📧 *Correo:* ${email}\n` +
+    `🔒 *Contraseña:* ${password}\n` +
     `👤 *Perfil:* ${p.nombre_perfil || '—'}\n` +
     (p.pin ? `🔑 *PIN:* ${p.pin}\n` : '') +
-    `\n¡Cualquier duda, aquí estamos! 🙌`;
+    `\n⚠️ El servicio se ha desconectado, vuelve a iniciar sesión con estos accesos y confirma que ya funciona. Si aún ves la pantalla cerrada, cierra la app completamente y vuelve a abrirla. 🙌`;
 
   window.open(`https://wa.me/51${celular}?text=${encodeURIComponent(mensaje)}`, '_blank');
 }
@@ -517,7 +519,7 @@ function filtrar(data) {
 async function cargarPerfiles() {
   const { data, error } = await supabase
     .from('perfiles')
-    .select('*, cuentas_madres(plataforma, email, precio_compra, max_perfiles)')
+    .select('*, cuentas_madres(plataforma, email, password, precio_compra, max_perfiles)')
     .order('created_at', { ascending: false });
 
   if (error) { console.error(error); return; }
